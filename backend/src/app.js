@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import projectRoutes from "./routes/projectRoutes.js";
 import portfolioRoutes from "./routes/portfolioRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import systemRoutes from "./routes/systemRoutes.js";
 
 const app = express();
 
@@ -36,5 +37,12 @@ app.get("/api/health", (req, res) => {
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/system", systemRoutes);
+
+app.use((req, res) => {
+  res.status(404).json({
+    message: "API route not found",
+  });
+});
 
 export default app;

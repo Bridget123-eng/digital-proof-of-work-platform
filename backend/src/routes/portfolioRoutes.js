@@ -23,6 +23,9 @@ router.get("/me", protect, getMyPortfolio);
 // UPDATE PORTFOLIO
 router.put("/", protect, updatePortfolio);
 
+// GET PUBLIC PORTFOLIO BY USER
+router.get("/user/:userId", getPublicPortfolio);
+
 
 // GET PUBLIC PORTFOLIO
 router.get("/:id", getPublicPortfolio);

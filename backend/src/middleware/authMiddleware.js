@@ -19,8 +19,13 @@ const protect = async (req, res, next) => {
         process.env.JWT_SECRET
       );
 
-      req.user = await User.findById(decoded.id)
-        .select("-password");
+      req.user = await User.findById(decoded.id).select("-password");
+
+      if (!req.user || req.user.status === "suspended") {
+        return res.status(401).json({
+          message: "Account is not allowed to perform this action",
+        });
+      }
 
       next();
 
@@ -35,6 +40,26 @@ const protect = async (req, res, next) => {
       message: "No token",
     });
   }
+};
+
+export const authorize = (...roles) => (req, res, next) => {
+  const requestedRoles = new Set(roles);
+
+  if (requestedRoles.has("admin")) {
+    requestedRoles.add("administrator");
+  }
+
+  if (requestedRoles.has("administrator")) {
+    requestedRoles.add("admin");
+  }
+
+  if (!req.user || !requestedRoles.has(req.user.role)) {
+    return res.status(403).json({
+      message: "You do not have permission to perform this action",
+    });
+  }
+
+  next();
 };
 
 export default protect;

@@ -38,13 +38,92 @@ const projectSchema = new mongoose.Schema(
       default: [],
     },
 
+    certificates: [
+      {
+        title: {
+          type: String,
+          default: "",
+          trim: true,
+        },
+        fileUrl: {
+          type: String,
+          default: "",
+          trim: true,
+        },
+        issuedBy: {
+          type: String,
+          default: "",
+          trim: true,
+        },
+        issuedDate: {
+          type: Date,
+        },
+      },
+    ],
+
+    evidenceType: {
+      type: String,
+      enum: ["repository", "certificate", "live_demo", "case_study"],
+      default: "repository",
+    },
+
+    visibility: {
+      type: String,
+      enum: ["private", "public"],
+      default: "public",
+    },
+
+    analysis: {
+      score: {
+        type: Number,
+        default: 0,
+      },
+      strengths: {
+        type: [String],
+        default: [],
+      },
+      risks: {
+        type: [String],
+        default: [],
+      },
+      summary: {
+        type: String,
+        default: "",
+      },
+      fallbackUsed: {
+        type: Boolean,
+        default: true,
+      },
+      analyzedAt: {
+        type: Date,
+      },
+    },
+
     verificationStatus: {
       type: String,
-      enum: ["pending", "verified", "rejected"],
+      enum: ["draft", "pending", "in_review", "verified", "rejected", "changes_requested"],
       default: "pending",
+    },
+
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    reviewNote: {
+      type: String,
+      default: "",
+    },
+
+    reviewedAt: {
+      type: Date,
     },
   },
   { timestamps: true }
 );
+
+projectSchema.index({ user: 1, verificationStatus: 1, createdAt: -1 });
+projectSchema.index({ verificationStatus: 1, createdAt: 1 });
+projectSchema.index({ title: "text", description: "text", skills: "text" });
 
 export default mongoose.model("Project", projectSchema);

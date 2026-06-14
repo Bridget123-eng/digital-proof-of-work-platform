@@ -9,9 +9,9 @@ const connectDB = async () => {
       );
     }
 
-    const conn = await mongoose.connect(
-      process.env.MONGO_URI
-    );
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 8000,
+    });
 
     console.log(
       `MongoDB Connected: ${conn.connection.host}`
@@ -21,7 +21,11 @@ const connectDB = async () => {
 
     console.error(error.message);
 
-    process.exit(1);
+    if (process.env.NODE_ENV === "production") {
+      process.exit(1);
+    }
+
+    return null;
   }
 };
 
