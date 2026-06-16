@@ -46,7 +46,7 @@ function Explore() {
               </div>
               <p className="mt-3 text-slate-700">{project.description}</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                {project.skills.map((skill) => (
+                {(project.skills || []).map((skill) => (
                   <span key={skill} className="rounded bg-slate-100 px-2 py-1 text-sm">
                     {skill}
                   </span>

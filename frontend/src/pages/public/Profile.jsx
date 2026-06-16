@@ -16,6 +16,11 @@ function Profile() {
       .catch(() => setStatus("error"));
   }, [id, userId]);
 
+  const skills = profile?.skills || [];
+  const projects = profile?.projects || [];
+  const badges = profile?.badges || [];
+  const certificates = profile?.certificates || [];
+
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10 text-slate-950">
       <div className="mx-auto max-w-5xl">
@@ -45,7 +50,7 @@ function Profile() {
                 </a>
               )}
               <div className="mt-4 flex flex-wrap gap-2">
-                {profile.skills.map((skill) => (
+                {skills.map((skill) => (
                   <span key={skill} className="rounded bg-slate-100 px-2 py-1 text-sm">
                     {skill}
                   </span>
@@ -56,21 +61,21 @@ function Profile() {
             <section>
               <h2 className="text-2xl font-semibold">Verified Projects</h2>
               <div className="mt-4 grid gap-4">
-                {profile.projects.map((project) => (
+                {projects.map((project) => (
                   <article key={project._id} className="rounded border border-slate-200 bg-white p-5">
                     <h3 className="text-xl font-semibold">{project.title}</h3>
                     <p className="mt-2 text-slate-700">{project.description}</p>
                     <p className="mt-3 text-sm text-emerald-800">Verification score {project.analysis?.score || 0}/100</p>
                   </article>
                 ))}
-                {profile.projects.length === 0 && <p>No verified public projects yet.</p>}
+                {projects.length === 0 && <p>No verified public projects yet.</p>}
               </div>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold">Badges</h2>
               <div className="mt-4 grid gap-3 md:grid-cols-3">
-                {profile.badges.map((badge) => (
+                {badges.map((badge) => (
                   <div key={badge._id} className="rounded border border-emerald-200 bg-emerald-50 p-4">
                     <p className="font-semibold">{badge.name}</p>
                     <p className="text-sm text-emerald-800">{badge.level}</p>
@@ -82,7 +87,7 @@ function Profile() {
             <section>
               <h2 className="text-2xl font-semibold">Certificates</h2>
               <div className="mt-4 grid gap-3 md:grid-cols-3">
-                {(profile.certificates || []).map((certificate) => (
+                {certificates.map((certificate) => (
                   <a
                     key={certificate.fileUrl}
                     className="rounded border border-slate-200 bg-white p-4 text-slate-700"

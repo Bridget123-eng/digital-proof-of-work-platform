@@ -44,14 +44,14 @@ function MyProjects() {
                   <p className="mt-2 text-slate-700">{project.description}</p>
                 </div>
                 <span className="rounded bg-slate-100 px-2 py-1 text-sm">
-                  {project.verificationStatus.replace("_", " ")}
+                  {(project.verificationStatus || "pending").replace("_", " ")}
                 </span>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded bg-emerald-100 px-2 py-1 text-sm text-emerald-800">
                   Analysis {project.analysis?.score || 0}/100
                 </span>
-                {project.skills.map((skill) => (
+                {(project.skills || []).map((skill) => (
                   <span key={skill} className="rounded bg-slate-100 px-2 py-1 text-sm">
                     {skill}
                   </span>

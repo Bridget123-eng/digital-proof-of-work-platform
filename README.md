@@ -14,7 +14,7 @@ npm install
 npm run dev
 ```
 
-4. Install and start the frontend:
+4.Install and start the frontend:
 
 ```bash
 cd frontend
@@ -22,7 +22,7 @@ npm install
 npm run dev
 ```
 
-5. Register an admin account, sign in, open the dashboard, and click `Seed demo data`.
+5.Register an admin account, sign in, open the dashboard, and click `Seed demo data`.
 
 Demo accounts created by seeding all use `Password123!`:
 

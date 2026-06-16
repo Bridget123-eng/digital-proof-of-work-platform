@@ -11,6 +11,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const isDatabaseConnected = () => mongoose.connection.readyState === 1;
+
 app.get("/api/health", (req, res) => {
   const dbStateMap = {
     0: "disconnected",
@@ -32,6 +34,20 @@ app.get("/api/health", (req, res) => {
       readyState: dbReadyState,
     },
   });
+});
+
+app.use("/api", (req, res, next) => {
+  if (req.path === "/health") {
+    return next();
+  }
+
+  if (!isDatabaseConnected()) {
+    return res.status(503).json({
+      message: "Database unavailable. Please confirm MongoDB is reachable and try again.",
+    });
+  }
+
+  next();
 });
 
 app.use("/api/portfolio", portfolioRoutes);

@@ -24,6 +24,7 @@ const buildUserResponse = (user) => ({
   id: user._id,
   name: user.name,
   email: user.email,
+  username: user.username || user.email,
   role: normalizeRole(user.role),
   status: user.status,
   profileImage: user.profileImage || "",
@@ -85,6 +86,7 @@ export const registerUser = async (req, res) => {
     const user = await User.create({
       name: name.trim(),
       email: normalizedEmail,
+      username: normalizedEmail,
       password: hashedPassword,
       role: adminEmails.includes(normalizedEmail) ? "admin" : normalizedRole,
     });
@@ -134,9 +136,11 @@ export const loginUser = async (req, res) => {
     }
 
     const normalizedRole = normalizeRole(user.role);
+    const normalizedUsername = user.username || normalizedEmail;
 
-    if (user.role !== normalizedRole) {
+    if (user.role !== normalizedRole || user.username !== normalizedUsername) {
       user.role = normalizedRole;
+      user.username = normalizedUsername;
       await user.save();
     }
 
@@ -179,6 +183,7 @@ export const resetPassword = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(password, salt);
     user.role = normalizeRole(user.role);
+    user.username = user.username || normalizedEmail;
     await user.save();
 
     res.status(200).json({
