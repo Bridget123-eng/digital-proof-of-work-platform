@@ -3,6 +3,33 @@ import Badge from "../models/Badge.js";
 import User from "../models/User.js";
 import { createAuditEvent } from "../utils/audit.js";
 
+const normalizeText = (value, maxLength = 4000) =>
+  String(value || "")
+    .trim()
+    .slice(0, maxLength);
+const normalizeProfileImage = (value) => normalizeText(value, 900000);
+
+const normalizeSkills = (skills) => {
+  const source = Array.isArray(skills)
+    ? skills
+    : String(skills || "")
+        .split(",")
+        .map((skill) => skill.trim());
+
+  return [...new Set(source.filter(Boolean).map((skill) => skill.slice(0, 80)))].slice(0, 30);
+};
+
+const normalizeCertificates = (certificates) =>
+  (Array.isArray(certificates) ? certificates : [])
+    .map((certificate) => ({
+      title: normalizeText(certificate?.title, 120),
+      fileUrl: normalizeText(certificate?.fileUrl, 500),
+      issuedBy: normalizeText(certificate?.issuedBy, 120),
+      issuedDate: certificate?.issuedDate || undefined,
+    }))
+    .filter((certificate) => certificate.title || certificate.fileUrl)
+    .slice(0, 15);
+
 
 // CREATE PORTFOLIO
 export const createPortfolio = async (req, res) => {
@@ -31,14 +58,14 @@ export const createPortfolio = async (req, res) => {
     // Create portfolio
     const portfolio = await Portfolio.create({
       studentId: req.user._id,
-      bio,
-      skills,
-      githubLink,
-      certificates,
+      bio: normalizeText(bio, 2000),
+      skills: normalizeSkills(skills),
+      githubLink: normalizeText(githubLink, 500),
+      certificates: normalizeCertificates(certificates),
     });
 
     if (profileImage) {
-      await User.findByIdAndUpdate(req.user._id, { profileImage });
+      await User.findByIdAndUpdate(req.user._id, { profileImage: normalizeProfileImage(profileImage) });
     }
 
     await createAuditEvent({
@@ -46,6 +73,7 @@ export const createPortfolio = async (req, res) => {
       action: "portfolio.created",
       entityType: "Portfolio",
       entityId: portfolio._id,
+      metadata: { owner: String(req.user._id) },
     });
 
     res.status(201).json(portfolio);
@@ -96,21 +124,23 @@ export const updatePortfolio = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    portfolio.bio = req.body.bio ?? portfolio.bio;
+    portfolio.bio = req.body.bio !== undefined ? normalizeText(req.body.bio, 2000) : portfolio.bio;
 
-    portfolio.skills = Array.isArray(req.body.skills)
-      ? req.body.skills
+    portfolio.skills = req.body.skills !== undefined
+      ? normalizeSkills(req.body.skills)
       : portfolio.skills;
 
-    portfolio.githubLink = req.body.githubLink ?? portfolio.githubLink;
+    portfolio.githubLink = req.body.githubLink !== undefined
+      ? normalizeText(req.body.githubLink, 500)
+      : portfolio.githubLink;
 
     if (Array.isArray(req.body.certificates)) {
-      portfolio.certificates = req.body.certificates;
+      portfolio.certificates = normalizeCertificates(req.body.certificates);
     }
 
     if (req.body.profileImage !== undefined) {
       await User.findByIdAndUpdate(req.user._id, {
-        profileImage: req.body.profileImage,
+        profileImage: normalizeProfileImage(req.body.profileImage),
       });
     }
 
@@ -122,6 +152,7 @@ export const updatePortfolio = async (req, res) => {
       action: "portfolio.updated",
       entityType: "Portfolio",
       entityId: portfolio._id,
+      metadata: { owner: String(req.user._id) },
     });
 
     const populatedPortfolio = await updatedPortfolio.populate(

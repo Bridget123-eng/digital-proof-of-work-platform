@@ -10,18 +10,7 @@ import UploadProject from "../pages/dashboard/UploadProject";
 import MyProjects from "../pages/dashboard/Myprojects";
 import Profile from "../pages/public/Profile";
 import Explore from "../pages/public/Explore";
-
-
-// Check authentication
-const isAuthenticated = () => {
-  return localStorage.getItem("userInfo");
-};
-
-
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  return isAuthenticated() ? children : <Navigate to="/login" />;
-};
+import ProtectedRoute from "../components/ProtectedRoute";
 
 
 function AppRoutes() {
@@ -52,7 +41,7 @@ function AppRoutes() {
         <Route
           path="/edit-portfolio"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["student", "verifier", "reviewer", "recruiter", "admin"]}>
               <EditPortfolio />
             </ProtectedRoute>
           }
@@ -61,7 +50,7 @@ function AppRoutes() {
         <Route
           path="/upload-project"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["student", "admin"]}>
               <UploadProject />
             </ProtectedRoute>
           }
@@ -70,11 +59,13 @@ function AppRoutes() {
         <Route
           path="/my-projects"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["student", "admin"]}>
               <MyProjects />
             </ProtectedRoute>
           }
         />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
     </BrowserRouter>

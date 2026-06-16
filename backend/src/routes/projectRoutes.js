@@ -13,21 +13,21 @@ import {
 
 const router = express.Router();
 
-router.post("/", protect, createProject);
+router.post("/", protect, authorize("student", "admin"), createProject);
 
 router.get("/my-projects", protect, getUserProjects);
 
 router.get(
   "/queue",
   protect,
-  authorize("verifier", "reviewer", "recruiter", "admin"),
+  authorize("verifier", "reviewer", "admin"),
   getVerificationQueue
 );
 
 router.get(
   "/analytics",
   protect,
-  authorize("recruiter", "admin", "verifier", "reviewer"),
+  authorize("recruiter", "admin"),
   getProjectAnalytics
 );
 

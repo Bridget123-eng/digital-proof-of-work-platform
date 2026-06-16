@@ -5,6 +5,34 @@ import Badge from "../models/Badge.js";
 import { analyzeProject } from "../utils/analyzeProject.js";
 import { createAuditEvent } from "../utils/audit.js";
 
+const allowedEvidenceTypes = new Set(["repository", "certificate", "live_demo", "case_study"]);
+const allowedVisibility = new Set(["private", "public"]);
+
+const normalizeText = (value, maxLength = 5000) =>
+  String(value || "")
+    .trim()
+    .slice(0, maxLength);
+
+const normalizeStringList = (value, maxItems = 20) => {
+  const source = Array.isArray(value)
+    ? value
+    : String(value || "")
+        .split(",")
+        .map((item) => item.trim());
+
+  return [...new Set(source.filter(Boolean).map((item) => item.slice(0, 120)))].slice(0, maxItems);
+};
+
+const normalizeCertificates = (certificates) =>
+  (Array.isArray(certificates) ? certificates : [])
+    .map((certificate) => ({
+      title: normalizeText(certificate?.title, 120),
+      fileUrl: normalizeText(certificate?.fileUrl, 500),
+      issuedBy: normalizeText(certificate?.issuedBy, 120),
+      issuedDate: certificate?.issuedDate || undefined,
+    }))
+    .filter((certificate) => certificate.title || certificate.fileUrl)
+    .slice(0, 10);
 
 // CREATE PROJECT
 export const createProject = async (req, res) => {
@@ -22,47 +50,45 @@ export const createProject = async (req, res) => {
       certificates,
     } = req.body;
 
-    if (!title || !description) {
+    const normalizedTitle = normalizeText(title, 160);
+    const normalizedDescription = normalizeText(description, 4000);
+
+    if (!normalizedTitle || !normalizedDescription) {
       return res.status(400).json({
         message: "Project title and description are required",
       });
     }
 
-    const skillList = Array.isArray(skills)
-      ? skills
-      : String(skills || "")
-          .split(",")
-          .map((skill) => skill.trim())
-          .filter(Boolean);
+    const normalizedEvidenceType = allowedEvidenceTypes.has(evidenceType)
+      ? evidenceType
+      : "repository";
+
+    const normalizedVisibility = allowedVisibility.has(visibility)
+      ? visibility
+      : "public";
+
+    const skillList = normalizeStringList(skills);
 
     const analysis = analyzeProject({
-      title,
-      description,
+      title: normalizedTitle,
+      description: normalizedDescription,
       skills: skillList,
-      githubLink,
-      liveLink,
+      githubLink: normalizeText(githubLink, 500),
+      liveLink: normalizeText(liveLink, 500),
     });
 
-    const proofFileList = Array.isArray(proofFiles)
-      ? proofFiles.filter(Boolean)
-      : String(proofFiles || "")
-          .split(",")
-          .map((file) => file.trim())
-          .filter(Boolean);
-
-    const certificateList = Array.isArray(certificates)
-      ? certificates.filter((certificate) => certificate?.title || certificate?.fileUrl)
-      : [];
+    const proofFileList = normalizeStringList(proofFiles, 10).map((file) => file.slice(0, 500));
+    const certificateList = normalizeCertificates(certificates);
 
     const project = await Project.create({
       user: req.user._id,
-      title,
-      description,
+      title: normalizedTitle,
+      description: normalizedDescription,
       skills: skillList,
-      githubLink,
-      liveLink,
-      evidenceType,
-      visibility,
+      githubLink: normalizeText(githubLink, 500),
+      liveLink: normalizeText(liveLink, 500),
+      evidenceType: normalizedEvidenceType,
+      visibility: normalizedVisibility,
       proofFiles: proofFileList,
       certificates: certificateList,
       analysis,
@@ -177,6 +203,7 @@ export const reviewProject = async (req, res) => {
   try {
     const { status, note = "" } = req.body;
     const allowedStatuses = ["in_review", "verified", "rejected", "changes_requested"];
+    const normalizedNote = normalizeText(note, 1000);
 
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({
@@ -193,7 +220,7 @@ export const reviewProject = async (req, res) => {
     }
 
     project.verificationStatus = status;
-    project.reviewNote = note;
+    project.reviewNote = normalizedNote;
     project.reviewedBy = req.user._id;
     project.reviewedAt = new Date();
     await project.save();
@@ -225,7 +252,7 @@ export const reviewProject = async (req, res) => {
       action: "project.reviewed",
       entityType: "Project",
       entityId: project._id,
-      metadata: { status, note },
+      metadata: { status, note: normalizedNote, owner: String(project.user) },
     });
 
     res.status(200).json(project);

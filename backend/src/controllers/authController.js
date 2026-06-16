@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import generateToken from "../utils/generateToken.js";
+import { createAuditEvent } from "../utils/audit.js";
 
 const roleAliases = {
   administrator: "admin",
@@ -14,6 +15,7 @@ const allowedRoles = [
   "admin",
   "administrator",
 ];
+const selfSignupRoles = new Set(["student", "verifier", "reviewer", "recruiter"]);
 
 const normalizeRole = (role = "student") => roleAliases[role] || role;
 
@@ -80,6 +82,14 @@ export const registerUser = async (req, res) => {
       .map((adminEmail) => adminEmail.trim().toLowerCase())
       .filter(Boolean);
 
+    const isBootstrapAdmin = adminEmails.includes(normalizedEmail);
+
+    if (!isBootstrapAdmin && !selfSignupRoles.has(normalizedRole)) {
+      return res.status(403).json({
+        message: "That role must be assigned by an administrator",
+      });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -88,7 +98,15 @@ export const registerUser = async (req, res) => {
       email: normalizedEmail,
       username: normalizedEmail,
       password: hashedPassword,
-      role: adminEmails.includes(normalizedEmail) ? "admin" : normalizedRole,
+      role: isBootstrapAdmin ? "admin" : normalizedRole,
+    });
+
+    await createAuditEvent({
+      actor: user._id,
+      action: "user.registered",
+      entityType: "User",
+      entityId: user._id,
+      metadata: { owner: String(user._id), role: user.role },
     });
 
     res.status(201).json(buildUserResponse(user));
@@ -144,6 +162,14 @@ export const loginUser = async (req, res) => {
       await user.save();
     }
 
+    await createAuditEvent({
+      actor: user._id,
+      action: "user.login",
+      entityType: "User",
+      entityId: user._id,
+      metadata: { owner: String(user._id), role: normalizedRole },
+    });
+
     res.status(200).json(buildUserResponse(user));
   } catch (error) {
     res.status(500).json({
@@ -155,12 +181,12 @@ export const loginUser = async (req, res) => {
 // RESET PASSWORD
 export const resetPassword = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, currentPassword, password } = req.body;
     const normalizedEmail = cleanEmail(email);
 
-    if (!normalizedEmail || !password) {
+    if (!normalizedEmail || !currentPassword || !password) {
       return res.status(400).json({
-        message: "Email and new password are required",
+        message: "Email, current password, and new password are required",
       });
     }
 
@@ -180,11 +206,33 @@ export const resetPassword = async (req, res) => {
       });
     }
 
+    if (user.status === "suspended") {
+      return res.status(403).json({
+        message: "Suspended accounts must be reset by an administrator",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        message: "Current password is incorrect",
+      });
+    }
+
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(password, salt);
     user.role = normalizeRole(user.role);
     user.username = user.username || normalizedEmail;
     await user.save();
+
+    await createAuditEvent({
+      actor: user._id,
+      action: "user.password_reset",
+      entityType: "User",
+      entityId: user._id,
+      metadata: { owner: String(user._id) },
+    });
 
     res.status(200).json({
       message: "Password reset successful",

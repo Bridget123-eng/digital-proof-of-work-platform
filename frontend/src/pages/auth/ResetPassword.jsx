@@ -6,6 +6,7 @@ function ResetPassword() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
+    currentPassword: "",
     password: "",
     confirmPassword: "",
   });
@@ -35,6 +36,7 @@ function ResetPassword() {
     try {
       await API.post("/auth/reset-password", {
         email: formData.email,
+        currentPassword: formData.currentPassword,
         password: formData.password,
       });
 
@@ -61,7 +63,7 @@ function ResetPassword() {
         </p>
         <h1 className="mt-2 text-3xl font-bold">Reset Password</h1>
         <p className="mt-2 text-sm text-slate-600">
-          Enter your account email and choose a new password.
+          Confirm your current password before choosing a new one. If you cannot access your current password, ask an administrator to reset the account for you.
         </p>
 
         <div className="mt-6 grid gap-4">
@@ -71,6 +73,16 @@ function ResetPassword() {
             placeholder="Email"
             className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500"
             value={formData.email}
+            required
+            onChange={handleChange}
+          />
+          <input
+            type="password"
+            name="currentPassword"
+            placeholder="Current password"
+            className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500"
+            value={formData.currentPassword}
+            minLength={6}
             required
             onChange={handleChange}
           />

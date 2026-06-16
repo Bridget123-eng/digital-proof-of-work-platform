@@ -57,6 +57,34 @@ function EditPortfolio() {
     setFormData({ ...formData, [event.target.name]: event.target.value });
   };
 
+  const handleProfileImageUpload = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setMessage("Please choose an image file for your profile picture.");
+      return;
+    }
+
+    if (file.size > 650 * 1024) {
+      setMessage("Please choose an image smaller than 650 KB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData((current) => ({
+        ...current,
+        profileImage: String(reader.result || ""),
+      }));
+      setMessage("");
+    };
+    reader.readAsDataURL(file);
+  };
+
   const updateCertificate = (index, field, value) => {
     const certificates = formData.certificates.map((certificate, currentIndex) =>
       currentIndex === index ? { ...certificate, [field]: value } : certificate
@@ -107,18 +135,10 @@ function EditPortfolio() {
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10 text-slate-950">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-6">
           <div>
             <h1 className="text-3xl font-bold">Edit Student Profile</h1>
             <p className="text-slate-600">Manage your profile picture, bio, skills, GitHub profile, and certificates.</p>
-          </div>
-          <div className="flex gap-2">
-            <button className="rounded border border-slate-300 px-4 py-2" onClick={() => navigate(-1)}>
-              Back
-            </button>
-            <Link className="rounded border border-slate-300 px-4 py-2" to="/dashboard">
-              Dashboard
-            </Link>
           </div>
         </div>
 
@@ -138,10 +158,11 @@ function EditPortfolio() {
               ) : (
                 <AvatarFallback name={user?.name} />
               )}
-              <label className="grid flex-1 gap-1">
-                <span className="font-medium">Profile picture URL</span>
-                <input name="profileImage" value={formData.profileImage} className="rounded border p-3" onChange={handleChange} />
-              </label>
+              <div className="grid flex-1 gap-2">
+                <span className="font-medium">Profile picture</span>
+                <input type="file" accept="image/*" className="rounded border p-3" onChange={handleProfileImageUpload} />
+                <p className="text-sm text-slate-500">Upload a JPG, PNG, or WEBP image up to 650 KB.</p>
+              </div>
             </div>
 
             <label className="grid gap-1">
@@ -181,9 +202,17 @@ function EditPortfolio() {
               ))}
             </section>
 
-            <button disabled={status === "saving"} className="rounded bg-slate-950 px-5 py-3 text-white disabled:opacity-60">
-              {status === "saving" ? "Saving..." : "Save profile"}
-            </button>
+            <div className="grid gap-3 pt-2 md:grid-cols-3">
+              <button disabled={status === "saving"} className="rounded bg-slate-950 px-5 py-3 text-white disabled:opacity-60">
+                {status === "saving" ? "Saving..." : "Save profile"}
+              </button>
+              <button className="rounded border border-slate-300 px-4 py-3" type="button" onClick={() => navigate(-1)}>
+                Back
+              </button>
+              <Link className="rounded border border-slate-300 px-4 py-3 text-center" to="/dashboard">
+                Dashboard
+              </Link>
+            </div>
           </form>
         )}
       </div>

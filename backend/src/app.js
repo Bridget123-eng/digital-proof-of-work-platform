@@ -8,8 +8,33 @@ import systemRoutes from "./routes/systemRoutes.js";
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = new Set(
+  [
+    process.env.APP_ORIGIN,
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+  ]
+    .flatMap((origin) => String(origin || "").split(","))
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Origin not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+app.use(express.json({ limit: "1mb" }));
 
 const isDatabaseConnected = () => mongoose.connection.readyState === 1;
 

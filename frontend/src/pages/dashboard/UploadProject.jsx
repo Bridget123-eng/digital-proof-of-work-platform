@@ -2,6 +2,13 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import API from "../../api/axios";
 
+const emptyCertificate = {
+  title: "",
+  fileUrl: "",
+  issuedBy: "",
+  issuedDate: "",
+};
+
 function UploadProject() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -13,10 +20,7 @@ function UploadProject() {
     evidenceType: "repository",
     visibility: "public",
     proofFiles: "",
-    certificateTitle: "",
-    certificateUrl: "",
-    certificateIssuer: "",
-    certificateIssuedDate: "",
+    certificates: [emptyCertificate],
   });
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -29,6 +33,32 @@ function UploadProject() {
     });
   };
 
+  const updateCertificate = (index, field, value) => {
+    setFormData((current) => ({
+      ...current,
+      certificates: current.certificates.map((certificate, currentIndex) =>
+        currentIndex === index ? { ...certificate, [field]: value } : certificate
+      ),
+    }));
+  };
+
+  const addCertificate = () => {
+    setFormData((current) => ({
+      ...current,
+      certificates: [...current.certificates, emptyCertificate],
+    }));
+  };
+
+  const removeCertificate = (index) => {
+    setFormData((current) => ({
+      ...current,
+      certificates:
+        current.certificates.length === 1
+          ? [emptyCertificate]
+          : current.certificates.filter((_, currentIndex) => currentIndex !== index),
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -39,16 +69,14 @@ function UploadProject() {
         ...formData,
         skills: formData.skills.split(",").map((skill) => skill.trim()).filter(Boolean),
         proofFiles: formData.proofFiles.split(",").map((file) => file.trim()).filter(Boolean),
-        certificates: formData.certificateUrl
-          ? [
-              {
-                title: formData.certificateTitle,
-                fileUrl: formData.certificateUrl,
-                issuedBy: formData.certificateIssuer,
-                issuedDate: formData.certificateIssuedDate || undefined,
-              },
-            ]
-          : [],
+        certificates: formData.certificates
+          .filter((certificate) => certificate.title || certificate.fileUrl)
+          .map((certificate) => ({
+            title: certificate.title,
+            fileUrl: certificate.fileUrl,
+            issuedBy: certificate.issuedBy,
+            issuedDate: certificate.issuedDate || undefined,
+          })),
       });
 
       setResult(data);
@@ -61,10 +89,7 @@ function UploadProject() {
         evidenceType: "repository",
         visibility: "public",
         proofFiles: "",
-        certificateTitle: "",
-        certificateUrl: "",
-        certificateIssuer: "",
-        certificateIssuedDate: "",
+        certificates: [emptyCertificate],
       });
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Project upload failed");
@@ -76,18 +101,10 @@ function UploadProject() {
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10 text-slate-950">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6">
           <div>
             <h1 className="text-3xl font-bold">Evidence Submission</h1>
             <p className="text-slate-600">Submit proof, repository links, and project context for verification.</p>
-          </div>
-          <div className="flex gap-2">
-            <button className="rounded border border-slate-300 px-4 py-2" type="button" onClick={() => navigate(-1)}>
-              Back
-            </button>
-            <Link className="rounded border border-slate-300 px-4 py-2" to="/dashboard">
-              Dashboard
-            </Link>
           </div>
         </div>
 
@@ -139,24 +156,63 @@ function UploadProject() {
           </label>
 
           <div className="rounded border border-slate-200 bg-slate-50 p-4">
-            <h2 className="font-semibold">Certificate evidence</h2>
-            <div className="mt-3 grid gap-4 md:grid-cols-2">
-              <label className="grid gap-1">
-                <span className="font-medium">Certificate title</span>
-                <input name="certificateTitle" value={formData.certificateTitle} className="rounded border p-3" onChange={handleChange} />
-              </label>
-              <label className="grid gap-1">
-                <span className="font-medium">Certificate URL</span>
-                <input name="certificateUrl" value={formData.certificateUrl} className="rounded border p-3" onChange={handleChange} />
-              </label>
-              <label className="grid gap-1">
-                <span className="font-medium">Issued by</span>
-                <input name="certificateIssuer" value={formData.certificateIssuer} className="rounded border p-3" onChange={handleChange} />
-              </label>
-              <label className="grid gap-1">
-                <span className="font-medium">Issued date</span>
-                <input type="date" name="certificateIssuedDate" value={formData.certificateIssuedDate} className="rounded border p-3" onChange={handleChange} />
-              </label>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-semibold">Certificate evidence</h2>
+              <button
+                type="button"
+                onClick={addCertificate}
+                className="rounded-full border border-slate-300 px-3 py-2 text-sm font-semibold"
+              >
+                + Add certificate
+              </button>
+            </div>
+            <div className="mt-3 grid gap-4">
+              {formData.certificates.map((certificate, index) => (
+                <div key={index} className="grid gap-4 rounded border border-slate-200 bg-white p-4 md:grid-cols-2">
+                  <label className="grid gap-1">
+                    <span className="font-medium">Certificate title</span>
+                    <input
+                      value={certificate.title}
+                      className="rounded border p-3"
+                      onChange={(event) => updateCertificate(index, "title", event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="font-medium">Certificate URL</span>
+                    <input
+                      value={certificate.fileUrl}
+                      className="rounded border p-3"
+                      onChange={(event) => updateCertificate(index, "fileUrl", event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="font-medium">Issued by</span>
+                    <input
+                      value={certificate.issuedBy}
+                      className="rounded border p-3"
+                      onChange={(event) => updateCertificate(index, "issuedBy", event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="font-medium">Issued date</span>
+                    <input
+                      type="date"
+                      value={certificate.issuedDate}
+                      className="rounded border p-3"
+                      onChange={(event) => updateCertificate(index, "issuedDate", event.target.value)}
+                    />
+                  </label>
+                  <div className="md:col-span-2">
+                    <button
+                      type="button"
+                      onClick={() => removeCertificate(index)}
+                      className="rounded border border-red-200 px-4 py-2 text-sm font-semibold text-red-700"
+                    >
+                      Remove certificate
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -179,9 +235,17 @@ function UploadProject() {
             </select>
           </label>
 
-          <button disabled={saving} className="rounded bg-slate-950 px-5 py-3 text-white disabled:opacity-60">
-            {saving ? "Submitting..." : "Submit evidence"}
-          </button>
+          <div className="grid gap-3 pt-2 md:grid-cols-3">
+            <button disabled={saving} className="rounded bg-slate-950 px-5 py-3 text-white disabled:opacity-60 md:col-span-1">
+              {saving ? "Submitting..." : "Submit evidence"}
+            </button>
+            <button className="rounded border border-slate-300 px-4 py-3" type="button" onClick={() => navigate(-1)}>
+              Back
+            </button>
+            <Link className="rounded border border-slate-300 px-4 py-3 text-center" to="/dashboard">
+              Dashboard
+            </Link>
+          </div>
         </form>
       </div>
     </div>
