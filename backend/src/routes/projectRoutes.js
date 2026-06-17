@@ -5,6 +5,7 @@ import protect, { authorize } from "../middleware/authMiddleware.js";
 import {
   createProject,
   getProjectAnalytics,
+  getReviewerAnalytics,
   getUserProjects,
   getPublicProjects,
   getVerificationQueue,
@@ -29,6 +30,13 @@ router.get(
   protect,
   authorize("recruiter", "admin"),
   getProjectAnalytics
+);
+
+router.get(
+  "/reviewer-analytics",
+  protect,
+  authorize("verifier", "reviewer", "admin"),
+  getReviewerAnalytics
 );
 
 router.patch(

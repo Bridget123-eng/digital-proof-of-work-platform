@@ -45,32 +45,7 @@ function Register() {
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-950">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1fr_0.9fr]">
-        <section className="hidden overflow-hidden rounded-lg border border-white/10 bg-white/10 p-8 text-white shadow-2xl lg:block">
-          <div className="rounded-lg bg-gradient-to-br from-emerald-300 via-sky-300 to-amber-200 p-1">
-            <div className="rounded-md bg-slate-950/90 p-8">
-              <p className="text-sm font-semibold uppercase tracking-wide text-emerald-200">
-                Digital Proof of Work
-              </p>
-              <h1 className="mt-4 text-4xl font-bold">
-                Build a profile recruiters and reviewers can trust.
-              </h1>
-              <div className="mt-8 grid gap-3">
-                {["Verified evidence", "Role dashboards", "Public portfolio"].map(
-                  (item) => (
-                    <div
-                      key={item}
-                      className="rounded-md border border-white/10 bg-white/10 px-4 py-3"
-                    >
-                      {item}
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-xl items-center">
         <form
           onSubmit={handleRegister}
           className="rounded-lg border border-slate-200 bg-white p-6 shadow-xl sm:p-8"
@@ -122,8 +97,8 @@ function Register() {
               onChange={handleChange}
             >
               <option value="student">Student</option>
-              <option value="verifier">Verifier</option>
               <option value="recruiter">Recruiter</option>
+              <option value="reviewer">Reviewer</option>
             </select>
           </div>
 

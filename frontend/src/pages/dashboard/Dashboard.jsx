@@ -42,6 +42,7 @@ const initialState = {
   projects: [],
   queue: [],
   audit: [],
+  reviewAnalytics: null,
   users: [],
   publicProjects: [],
   analytics: null,
@@ -115,6 +116,7 @@ function Dashboard() {
   const [badgeForm, setBadgeForm] = useState(emptyBadgeForm);
   const [configForm, setConfigForm] = useState(emptyConfigForm);
   const [tempPasswordMessage, setTempPasswordMessage] = useState("");
+  const [reviewNotes, setReviewNotes] = useState({});
 
   useEffect(() => {
     if (location.state?.message) {
@@ -142,6 +144,7 @@ function Dashboard() {
       if (role === "verifier" || role === "reviewer" || role === "admin") {
         requests.push(["queue", API.get("/projects/queue?status=pending")]);
         requests.push(["audit", API.get("/system/audit")]);
+        requests.push(["reviewAnalytics", API.get("/projects/reviewer-analytics")]);
       }
 
       if (role === "recruiter" || role === "admin") {
@@ -196,7 +199,25 @@ function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [role]);
+  }, [role, location.key]);
+
+  useEffect(() => {
+    if (!user?.profileImage) {
+      return;
+    }
+
+    setDashboardData((current) => ({
+      ...current,
+      portfolio: current.portfolio
+        ? {
+            ...current.portfolio,
+            studentId: current.portfolio.studentId
+              ? { ...current.portfolio.studentId, profileImage: user.profileImage }
+              : current.portfolio.studentId,
+          }
+        : current.portfolio,
+    }));
+  }, [user?.profileImage]);
 
   const unreadNotifications = dashboardData.notifications.filter((item) => !item.read).length;
   const adminOverview = dashboardData.adminOverview;
@@ -210,26 +231,6 @@ function Dashboard() {
       ["rejected", "changes_requested"].includes(project.verificationStatus)
     ).length,
   };
-  const studentNextSteps = [
-    {
-      label: profileCompletion < 100 ? "Complete your profile bio, GitHub, skills, and certificates." : "Your profile is complete and presentation-ready.",
-      tone: profileCompletion < 100 ? "text-amber-100" : "text-emerald-100",
-    },
-    {
-      label:
-        studentProjectStats.pending > 0
-          ? `${studentProjectStats.pending} submission${studentProjectStats.pending === 1 ? "" : "s"} currently waiting for verification.`
-          : "No submissions are waiting for review right now.",
-      tone: studentProjectStats.pending > 0 ? "text-sky-100" : "text-slate-200",
-    },
-    {
-      label:
-        studentProjectStats.needsAttention > 0
-          ? `${studentProjectStats.needsAttention} submission${studentProjectStats.needsAttention === 1 ? "" : "s"} need updates or a resubmission.`
-          : "No submissions currently need changes from you.",
-      tone: studentProjectStats.needsAttention > 0 ? "text-rose-100" : "text-slate-200",
-    },
-  ];
   const roleOverviewCopy = {
     student: {
       title: "Student progress summary",
@@ -286,20 +287,22 @@ function Dashboard() {
       { label: "Edit profile", type: "route", route: "/edit-portfolio", detail: "Complete your verified profile." },
       { label: "Submit evidence", type: "route", route: "/upload-project", detail: "Add new proof-of-work." },
       { label: "My projects", type: "route", route: "/my-projects", detail: "Check review status and feedback." },
-      { label: "Notifications", type: "info", action: "student-notifications", detail: "See updates and deadlines." },
-      { label: "Badges", type: "info", action: "student-badges", detail: "Review trust signals earned." },
+      { label: "Notifications", type: "route", route: "/notifications", detail: "See updates and deadlines." },
+      { label: "Badges", type: "route", route: "/my-badges", detail: "Review trust signals earned." },
     ],
     verifier: [
       { label: "Verification queue", type: "section", section: "queue", detail: "Review pending submissions." },
-      { label: "Audit history", type: "section", section: "audit", detail: "Inspect recent role-safe activity." },
+      { label: "Review workspace", type: "section", section: "review-workspace", detail: "Open evidence, compare proof, and inspect AI analysis." },
+      { label: "Reviewer analytics", type: "section", section: "reviewer-analytics", detail: "Track completed reviews and turnaround." },
+      { label: "Audit logs", type: "section", section: "audit", detail: "Inspect who reviewed what and when." },
       { label: "My profile", type: "route", route: "/edit-portfolio", detail: "Update your verifier profile." },
-      { label: "Notifications", type: "section", section: "notifications", detail: "Track review updates." },
     ],
     reviewer: [
       { label: "Verification queue", type: "section", section: "queue", detail: "Review pending submissions." },
-      { label: "Audit history", type: "section", section: "audit", detail: "Inspect recent role-safe activity." },
+      { label: "Review workspace", type: "section", section: "review-workspace", detail: "Open evidence, compare proof, and inspect AI analysis." },
+      { label: "Reviewer analytics", type: "section", section: "reviewer-analytics", detail: "Track completed reviews and turnaround." },
+      { label: "Audit logs", type: "section", section: "audit", detail: "Inspect who reviewed what and when." },
       { label: "My profile", type: "route", route: "/edit-portfolio", detail: "Update your reviewer profile." },
-      { label: "Notifications", type: "section", section: "notifications", detail: "Track review updates." },
     ],
     recruiter: [
       { label: "Explore work", type: "route", route: "/explore", detail: "Search verified public projects." },
@@ -327,14 +330,14 @@ function Dashboard() {
       { value: dashboardData.badges.length, label: "Badges earned" },
     ],
     verifier: [
-      { value: dashboardData.queue.length, label: "Pending reviews" },
-      { value: unreadNotifications, label: "Unread notifications" },
-      { value: dashboardData.audit.length, label: "Visible audit events" },
+      { value: dashboardData.reviewAnalytics?.reviewsCompleted || 0, label: "Reviews completed" },
+      { value: dashboardData.reviewAnalytics?.pendingReviews || dashboardData.queue.length, label: "Pending reviews" },
+      { value: dashboardData.reviewAnalytics?.approvalPercentage || 0, label: "Approval %" },
     ],
     reviewer: [
-      { value: dashboardData.queue.length, label: "Pending reviews" },
-      { value: unreadNotifications, label: "Unread notifications" },
-      { value: dashboardData.audit.length, label: "Visible audit events" },
+      { value: dashboardData.reviewAnalytics?.reviewsCompleted || 0, label: "Reviews completed" },
+      { value: dashboardData.reviewAnalytics?.pendingReviews || dashboardData.queue.length, label: "Pending reviews" },
+      { value: dashboardData.reviewAnalytics?.approvalPercentage || 0, label: "Approval %" },
     ],
     recruiter: [
       { value: dashboardData.analytics?.verified || 0, label: "Verified projects" },
@@ -391,25 +394,6 @@ function Dashboard() {
       return;
     }
 
-    if (action.type === "info") {
-      if (action.action === "student-notifications") {
-        setActionMessage(
-          unreadNotifications > 0
-            ? `You have ${unreadNotifications} unread notification${unreadNotifications === 1 ? "" : "s"}.`
-            : "You do not have any unread notifications right now."
-        );
-      }
-
-      if (action.action === "student-badges") {
-        setActionMessage(
-          dashboardData.badges.length > 0
-            ? `You have earned ${dashboardData.badges.length} badge${dashboardData.badges.length === 1 ? "" : "s"}.`
-            : "You have not earned any badges yet."
-        );
-      }
-      return;
-    }
-
     if (action.action === "seed-demo") {
       try {
         setBusyKey("seed-demo");
@@ -444,17 +428,26 @@ function Dashboard() {
   const submitReview = async (projectId, nextStatus) => {
     try {
       setBusyKey(`review-${projectId}-${nextStatus}`);
+      const note = reviewNotes[projectId] || "";
       await API.patch(`/projects/${projectId}/review`, {
         status: nextStatus,
         note:
-          nextStatus === "verified"
+          note ||
+          (nextStatus === "verified"
             ? "Verified from dashboard workspace."
-            : "Returned from dashboard workspace for another review cycle.",
+            : nextStatus === "rejected"
+              ? "Rejected from dashboard workspace."
+              : "Returned from dashboard workspace for another review cycle."),
       });
       setDashboardData((current) => ({
         ...current,
         queue: current.queue.filter((project) => project._id !== projectId),
       }));
+      setReviewNotes((current) => {
+        const next = { ...current };
+        delete next[projectId];
+        return next;
+      });
       setActionMessage(`Project ${nextStatus.replace("_", " ")} successfully.`);
       if (role === "admin") {
         await refreshAdminSlices();
@@ -823,7 +816,7 @@ function Dashboard() {
               )}
 
               {role === "student" && (
-                <section id="student-workflow" className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+                <section id="student-workflow" className="grid gap-6">
                   <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6 shadow-[0_30px_90px_-50px_rgba(14,165,233,0.8)]">
                     <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Submission workflow</p>
                     <h2 className="mt-2 text-2xl font-semibold">Track your verification progress</h2>
@@ -852,24 +845,6 @@ function Dashboard() {
                     >
                       Open project tracker
                     </button>
-                  </div>
-
-                  <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6 shadow-[0_30px_90px_-50px_rgba(16,185,129,0.7)]">
-                    <p className="text-sm uppercase tracking-[0.22em] text-emerald-300">Student actions</p>
-                    <h2 className="mt-2 text-2xl font-semibold">What to focus on next</h2>
-                    <div className="mt-4 grid gap-3">
-                      {studentNextSteps.map((step) => (
-                        <div key={step.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                          <p className={`text-sm leading-6 ${step.tone}`}>{step.label}</p>
-                        </div>
-                      ))}
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <p className="text-sm text-slate-400">Recommended student workflow</p>
-                        <p className="mt-2 text-sm leading-6 text-slate-200">
-                          Build your profile, submit repository or certificate evidence, respond quickly to reviewer feedback, and collect badges as verified proof accumulates.
-                        </p>
-                      </div>
-                    </div>
                   </div>
                 </section>
               )}
@@ -971,7 +946,9 @@ function Dashboard() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Verification management</p>
-                      <h2 className="mt-2 text-2xl font-semibold">Reviewer workspace</h2>
+                      <h2 className="mt-2 text-2xl font-semibold">
+                        {role === "admin" ? "Reviewer workspace" : "Verification queue"}
+                      </h2>
                     </div>
                     {role === "admin" && adminOverview?.metrics && (
                       <div className="flex flex-wrap gap-3 text-sm">
@@ -987,6 +964,34 @@ function Dashboard() {
                       </div>
                     )}
                   </div>
+                  {(role === "verifier" || role === "reviewer") && (
+                    <div id="reviewer-analytics" className="mt-4 grid gap-3 md:grid-cols-4">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm text-slate-400">Reviews completed</p>
+                        <p className="mt-2 text-2xl font-semibold text-white">
+                          {dashboardData.reviewAnalytics?.reviewsCompleted || 0}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm text-slate-400">Average review time</p>
+                        <p className="mt-2 text-2xl font-semibold text-white">
+                          {dashboardData.reviewAnalytics?.averageReviewTimeHours || 0}h
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm text-slate-400">Pending reviews</p>
+                        <p className="mt-2 text-2xl font-semibold text-white">
+                          {dashboardData.reviewAnalytics?.pendingReviews || dashboardData.queue.length}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm text-slate-400">Approval percentage</p>
+                        <p className="mt-2 text-2xl font-semibold text-white">
+                          {dashboardData.reviewAnalytics?.approvalPercentage || 0}%
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {role === "admin" && (
                     <div className="mt-4 grid gap-3 md:grid-cols-3">
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -1003,7 +1008,7 @@ function Dashboard() {
                       </div>
                     </div>
                   )}
-                  <div className="mt-4 grid gap-4">
+                  <div id="review-workspace" className="mt-4 grid gap-4">
                     {dashboardData.queue.length === 0 && (
                       <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 p-4 text-sm text-slate-300">
                         No pending submissions are waiting right now.
@@ -1011,31 +1016,147 @@ function Dashboard() {
                     )}
                     {dashboardData.queue.map((project) => (
                       <article key={project._id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
                           <div>
-                            <h3 className="text-lg font-semibold text-white">{project.title}</h3>
-                            <p className="mt-1 text-sm text-slate-300">{project.description}</p>
-                            <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-400">
-                              Owner: {project.user?.name || "Unknown"} | Score: {project.analysis?.score || 0}/100
-                            </p>
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <h3 className="text-lg font-semibold text-white">{project.title}</h3>
+                                <p className="mt-1 text-sm text-slate-300">{project.description}</p>
+                                <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-400">
+                                  Student: {project.user?.name || "Unknown"} | Evidence: {formatStatusLabel(project.evidenceType)} | Score: {project.analysis?.score || 0}/100
+                                </p>
+                              </div>
+                              <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-100">
+                                {formatStatusLabel(project.verificationStatus)}
+                              </span>
+                            </div>
+
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                              <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+                                <p className="text-sm font-semibold text-white">Submitted evidence</p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {project.githubLink && (
+                                    <a href={project.githubLink} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-3 py-1 text-sm text-slate-200">
+                                      Open GitHub
+                                    </a>
+                                  )}
+                                  {project.liveLink && (
+                                    <a href={project.liveLink} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-3 py-1 text-sm text-slate-200">
+                                      Open live demo
+                                    </a>
+                                  )}
+                                  {(project.proofFiles || []).map((file, index) => (
+                                    <a key={file} href={file} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-3 py-1 text-sm text-slate-200">
+                                      File {index + 1}
+                                    </a>
+                                  ))}
+                                  {(project.certificates || []).map((certificate, index) => (
+                                    <a
+                                      key={`${certificate.fileUrl}-${index}`}
+                                      href={certificate.fileUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-sm text-emerald-100"
+                                    >
+                                      {certificate.title || `Certificate ${index + 1}`}
+                                    </a>
+                                  ))}
+                                  {!project.githubLink && !project.liveLink && !(project.proofFiles || []).length && !(project.certificates || []).length && (
+                                    <p className="text-sm text-slate-400">No links or files were attached.</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+                                <p className="text-sm font-semibold text-white">Compare evidence</p>
+                                <p className="mt-3 text-sm leading-6 text-slate-300">
+                                  Skills: {(project.skills || []).join(", ") || "None listed"}
+                                </p>
+                                <p className="mt-2 text-sm leading-6 text-slate-300">
+                                  Portfolio bio: {project.studentPortfolio?.bio || "No student bio available."}
+                                </p>
+                                <p className="mt-2 text-sm leading-6 text-slate-300">
+                                  Student GitHub: {project.studentPortfolio?.githubLink || "No portfolio GitHub linked."}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+                              <p className="text-sm font-semibold text-white">AI-generated analysis</p>
+                              <p className="mt-3 text-sm leading-6 text-slate-300">
+                                {project.analysis?.summary || "No analysis summary available."}
+                              </p>
+                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                <div>
+                                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">Strengths</p>
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {(project.analysis?.strengths || []).map((item) => (
+                                      <span key={item} className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs text-emerald-100">
+                                        {item}
+                                      </span>
+                                    ))}
+                                    {(project.analysis?.strengths || []).length === 0 && (
+                                      <span className="text-sm text-slate-400">No strengths listed.</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-200">Risks</p>
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {(project.analysis?.risks || []).map((item) => (
+                                      <span key={item} className="rounded-full border border-rose-300/20 bg-rose-300/10 px-3 py-1 text-xs text-rose-100">
+                                        {item}
+                                      </span>
+                                    ))}
+                                    {(project.analysis?.risks || []).length === 0 && (
+                                      <span className="text-sm text-slate-400">No risks listed.</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => submitReview(project._id, "verified")}
-                              disabled={busyKey === `review-${project._id}-verified`}
-                              className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-60"
-                            >
-                              Verify
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => submitReview(project._id, "changes_requested")}
-                              disabled={busyKey === `review-${project._id}-changes_requested`}
-                              className="rounded-xl border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-100 disabled:opacity-60"
-                            >
-                              Request changes
-                            </button>
+
+                          <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                            <p className="text-sm uppercase tracking-[0.18em] text-sky-300">Decision panel</p>
+                            <p className="mt-2 text-lg font-semibold text-white">Review and comment</p>
+                            <textarea
+                              value={reviewNotes[project._id] || ""}
+                              onChange={(event) =>
+                                setReviewNotes((current) => ({
+                                  ...current,
+                                  [project._id]: event.target.value,
+                                }))
+                              }
+                              rows="6"
+                              placeholder="Add comments for the student or note your review rationale."
+                              className="mt-4 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white"
+                            />
+                            <div className="mt-4 grid gap-3">
+                              <button
+                                type="button"
+                                onClick={() => submitReview(project._id, "verified")}
+                                disabled={busyKey === `review-${project._id}-verified`}
+                                className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 disabled:opacity-60"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => submitReview(project._id, "rejected")}
+                                disabled={busyKey === `review-${project._id}-rejected`}
+                                className="rounded-xl border border-rose-300 px-4 py-3 text-sm font-semibold text-rose-100 disabled:opacity-60"
+                              >
+                                Reject
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => submitReview(project._id, "changes_requested")}
+                                disabled={busyKey === `review-${project._id}-changes_requested`}
+                                className="rounded-xl border border-amber-300 px-4 py-3 text-sm font-semibold text-amber-100 disabled:opacity-60"
+                              >
+                                Request changes
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </article>
@@ -1474,7 +1595,7 @@ function Dashboard() {
               {(role === "verifier" || role === "reviewer") && (
                 <section id="audit" className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
                   <p className="text-sm uppercase tracking-[0.22em] text-sky-300">Audit trail</p>
-                  <h2 className="mt-2 text-2xl font-semibold">Recent recorded activity</h2>
+                  <h2 className="mt-2 text-2xl font-semibold">Reviewer audit logs</h2>
                   <div className="mt-4 grid gap-3">
                     {dashboardData.audit.length === 0 && (
                       <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 p-4 text-sm text-slate-300">
@@ -1485,8 +1606,16 @@ function Dashboard() {
                       <article key={event._id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-200">{event.action}</p>
                         <p className="mt-1 text-sm text-slate-300">
-                          Actor: {event.actor?.name || "System"} | Target: {event.entityType}
+                          Actor: {event.actor?.name || "System"} | Target: {event.metadata?.projectTitle || event.entityType}
                         </p>
+                        {event.metadata?.status && (
+                          <p className="mt-1 text-sm text-slate-300">
+                            Decision: {formatStatusLabel(event.metadata.status)}
+                          </p>
+                        )}
+                        {event.metadata?.note && (
+                          <p className="mt-2 text-sm text-slate-400">Comment: {event.metadata.note}</p>
+                        )}
                         <p className="mt-1 text-xs text-slate-400">{new Date(event.createdAt).toLocaleString()}</p>
                       </article>
                     ))}

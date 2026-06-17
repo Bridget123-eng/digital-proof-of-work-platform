@@ -37,6 +37,7 @@ function EditPortfolio() {
   });
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState("neutral");
 
   useEffect(() => {
     API.get("/portfolio/me")
@@ -65,11 +66,13 @@ function EditPortfolio() {
     }
 
     if (!file.type.startsWith("image/")) {
+      setMessageTone("error");
       setMessage("Please choose an image file for your profile picture.");
       return;
     }
 
     if (file.size > 650 * 1024) {
+      setMessageTone("error");
       setMessage("Please choose an image smaller than 650 KB.");
       return;
     }
@@ -109,6 +112,7 @@ function EditPortfolio() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage("");
+    setMessageTone("neutral");
     setStatus("saving");
 
     try {
@@ -124,9 +128,18 @@ function EditPortfolio() {
       const nextUser = { ...user, profileImage: data.studentId?.profileImage || formData.profileImage };
       localStorage.setItem("userInfo", JSON.stringify(nextUser));
       setUser(nextUser);
+      setFormData({
+        bio: data.bio || "",
+        skills: (data.skills || []).join(", "),
+        githubLink: data.githubLink || "",
+        profileImage: data.studentId?.profileImage || formData.profileImage || "",
+        certificates: data.certificates?.length ? data.certificates : [emptyCertificate],
+      });
+      setMessageTone("success");
       setMessage("Profile updated successfully.");
       setStatus("ready");
     } catch (error) {
+      setMessageTone("error");
       setMessage(error.response?.data?.message || "Profile update failed.");
       setStatus("ready");
     }
@@ -146,7 +159,19 @@ function EditPortfolio() {
 
         {status !== "loading" && (
           <form onSubmit={handleSubmit} className="grid gap-5 rounded border border-slate-200 bg-white p-6">
-            {message && <p className="rounded bg-slate-100 p-3 text-slate-700">{message}</p>}
+            {message && (
+              <p
+                className={`rounded p-3 text-sm ${
+                  messageTone === "success"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : messageTone === "error"
+                      ? "bg-red-50 text-red-700"
+                      : "bg-slate-100 text-slate-700"
+                }`}
+              >
+                {message}
+              </p>
+            )}
 
             <div className="flex items-center gap-4">
               {formData.profileImage ? (

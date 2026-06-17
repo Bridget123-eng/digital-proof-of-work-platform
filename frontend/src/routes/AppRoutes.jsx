@@ -8,6 +8,8 @@ import Dashboard from "../pages/dashboard/Dashboard";
 import EditPortfolio from "../pages/dashboard/EditPortfolio";
 import UploadProject from "../pages/dashboard/UploadProject";
 import MyProjects from "../pages/dashboard/Myprojects";
+import Notifications from "../pages/dashboard/Notifications";
+import MyBadges from "../pages/dashboard/MyBadges";
 import Profile from "../pages/public/Profile";
 import Explore from "../pages/public/Explore";
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -61,6 +63,24 @@ function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={["student", "admin"]}>
               <MyProjects />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Notifications />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/my-badges"
+          element={
+            <ProtectedRoute allowedRoles={["student", "admin"]}>
+              <MyBadges />
             </ProtectedRoute>
           }
         />

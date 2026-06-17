@@ -39,7 +39,7 @@ function Login() {
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-950">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[0.9fr_1fr]">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-xl items-center">
         <form
           onSubmit={handleLogin}
           className="rounded-lg border border-slate-200 bg-white p-6 shadow-xl sm:p-8"
@@ -104,24 +104,6 @@ function Login() {
             </Link>
           </p>
         </form>
-
-        <section className="hidden overflow-hidden rounded-lg border border-white/10 bg-white/10 p-8 text-white shadow-2xl lg:block">
-          <div className="grid aspect-[4/3] place-items-center rounded-lg bg-gradient-to-br from-sky-300 via-emerald-300 to-amber-200 p-8">
-            <div className="w-full rounded-lg bg-white/85 p-6 text-slate-950 shadow-xl">
-              <div className="h-3 w-24 rounded bg-sky-500" />
-              <div className="mt-6 grid gap-3">
-                <div className="h-14 rounded bg-slate-100" />
-                <div className="h-14 rounded bg-emerald-100" />
-                <div className="h-14 rounded bg-amber-100" />
-              </div>
-              <div className="mt-6 grid grid-cols-3 gap-3">
-                <div className="h-20 rounded bg-sky-100" />
-                <div className="h-20 rounded bg-emerald-100" />
-                <div className="h-20 rounded bg-amber-100" />
-              </div>
-            </div>
-          </div>
-        </section>
       </div>
     </main>
   );

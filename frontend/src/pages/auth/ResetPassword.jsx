@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import API from "../../api/axios";
 
 function ResetPassword() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
   const [formData, setFormData] = useState({
     email: "",
-    currentPassword: "",
     password: "",
     confirmPassword: "",
   });
@@ -26,22 +27,29 @@ function ResetPassword() {
     setMessage("");
     setErrorMessage("");
 
-    if (formData.password !== formData.confirmPassword) {
-      setErrorMessage("Passwords do not match.");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      await API.post("/auth/reset-password", {
-        email: formData.email,
-        currentPassword: formData.currentPassword,
-        password: formData.password,
-      });
+      if (!token) {
+        await API.post("/auth/forgot-password", {
+          email: formData.email,
+        });
+        setMessage("If the email is registered, a password reset link has been sent.");
+      } else {
+        if (formData.password !== formData.confirmPassword) {
+          setErrorMessage("Passwords do not match.");
+          setIsSubmitting(false);
+          return;
+        }
 
-      setMessage("Password reset successful. Redirecting to login...");
-      setTimeout(() => navigate("/login"), 700);
+        await API.post("/auth/reset-password", {
+          token,
+          password: formData.password,
+        });
+
+        setMessage("Password reset successful. Redirecting to login...");
+        setTimeout(() => navigate("/login"), 900);
+      }
     } catch (error) {
       setErrorMessage(
         error.response?.data?.message ||
@@ -61,51 +69,51 @@ function ResetPassword() {
         <p className="text-sm font-semibold uppercase tracking-wide text-amber-700">
           Account recovery
         </p>
-        <h1 className="mt-2 text-3xl font-bold">Reset Password</h1>
+        <h1 className="mt-2 text-3xl font-bold">
+          {token ? "Choose a new password" : "Reset Password"}
+        </h1>
         <p className="mt-2 text-sm text-slate-600">
-          Confirm your current password before choosing a new one. If you cannot access your current password, ask an administrator to reset the account for you.
+          {token
+            ? "Set your new password below. This reset link expires after a short time."
+            : "Enter your registered email address and we will send you a reset link."}
         </p>
 
         <div className="mt-6 grid gap-4">
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500"
-            value={formData.email}
-            required
-            onChange={handleChange}
-          />
-          <input
-            type="password"
-            name="currentPassword"
-            placeholder="Current password"
-            className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500"
-            value={formData.currentPassword}
-            minLength={6}
-            required
-            onChange={handleChange}
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="New password"
-            className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500"
-            value={formData.password}
-            minLength={6}
-            required
-            onChange={handleChange}
-          />
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirm new password"
-            className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500"
-            value={formData.confirmPassword}
-            minLength={6}
-            required
-            onChange={handleChange}
-          />
+          {!token && (
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500"
+              value={formData.email}
+              required
+              onChange={handleChange}
+            />
+          )}
+          {token && (
+            <>
+              <input
+                type="password"
+                name="password"
+                placeholder="New password"
+                className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500"
+                value={formData.password}
+                minLength={6}
+                required
+                onChange={handleChange}
+              />
+              <input
+                type="password"
+                name="confirmPassword"
+                placeholder="Confirm new password"
+                className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500"
+                value={formData.confirmPassword}
+                minLength={6}
+                required
+                onChange={handleChange}
+              />
+            </>
+          )}
         </div>
 
         {errorMessage && (
@@ -124,7 +132,7 @@ function ResetPassword() {
           disabled={isSubmitting}
           className="mt-6 w-full rounded-md bg-amber-600 p-3 font-semibold text-white hover:bg-amber-700 disabled:bg-amber-300"
         >
-          {isSubmitting ? "Resetting..." : "Reset Password"}
+          {isSubmitting ? (token ? "Saving..." : "Sending...") : token ? "Save new password" : "Send reset link"}
         </button>
 
         <p className="mt-4 text-center text-sm text-slate-600">
