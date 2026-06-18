@@ -8,6 +8,17 @@ import systemRoutes from "./routes/systemRoutes.js";
 
 const app = express();
 
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
+
 const allowedOrigins = new Set(
   [
     process.env.APP_ORIGIN,
@@ -34,7 +45,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "4mb" }));
 
 const isDatabaseConnected = () => mongoose.connection.readyState === 1;
 
@@ -79,6 +90,16 @@ app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/system", systemRoutes);
+
+app.use((error, req, res, next) => {
+  if (error?.type === "entity.too.large") {
+    return res.status(413).json({
+      message: "Uploaded data is too large. Please choose a smaller image and try again.",
+    });
+  }
+
+  next(error);
+});
 
 app.use((req, res) => {
   res.status(404).json({

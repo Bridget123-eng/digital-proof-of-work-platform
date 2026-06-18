@@ -263,6 +263,46 @@ export const reviewProject = async (req, res) => {
   }
 };
 
+export const getReviewerAnalytics = async (req, res) => {
+  try {
+    const reviewerFilter = req.user.role === "admin" ? {} : { reviewedBy: req.user._id };
+    const completedFilter = {
+      ...reviewerFilter,
+      reviewedAt: { $exists: true },
+    };
+
+    const [reviewsCompleted, pendingReviews, approvedReviews, reviewedProjects] = await Promise.all([
+      Project.countDocuments(completedFilter),
+      Project.countDocuments({ verificationStatus: "pending" }),
+      Project.countDocuments({ ...completedFilter, verificationStatus: "verified" }),
+      Project.find(completedFilter).select("createdAt reviewedAt verificationStatus").lean(),
+    ]);
+
+    const reviewDurations = reviewedProjects
+      .map((project) => {
+        const createdAt = new Date(project.createdAt).getTime();
+        const reviewedAt = new Date(project.reviewedAt).getTime();
+        return reviewedAt > createdAt ? (reviewedAt - createdAt) / (1000 * 60 * 60) : null;
+      })
+      .filter((duration) => duration !== null);
+
+    const averageReviewTimeHours = reviewDurations.length
+      ? Number((reviewDurations.reduce((sum, duration) => sum + duration, 0) / reviewDurations.length).toFixed(1))
+      : 0;
+
+    res.status(200).json({
+      reviewsCompleted,
+      averageReviewTimeHours,
+      pendingReviews,
+      approvalPercentage: reviewsCompleted ? Math.round((approvedReviews / reviewsCompleted) * 100) : 0,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
 export const getProjectAnalytics = async (req, res) => {
   try {
     const [total, pending, verified, rejected, inReview] = await Promise.all([

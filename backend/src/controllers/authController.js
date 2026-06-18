@@ -21,11 +21,41 @@ const selfSignupRoles = new Set(["student", "verifier", "reviewer", "recruiter"]
 
 const normalizeRole = (role = "student") => roleAliases[role] || role;
 const cleanEmail = (email) => String(email || "").trim().toLowerCase();
-const getPasswordResetUrl = (token) => {
-  const baseUrl =
+const isProduction = () => process.env.NODE_ENV === "production";
+const escapeHtml = (value) =>
+  String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+const getRequestOrigin = (req) => {
+  const origin = req.get("origin");
+  if (origin && origin !== "null") {
+    return origin;
+  }
+
+  try {
+    const referer = req.get("referer");
+    return referer ? new URL(referer).origin : "";
+  } catch {
+    return "";
+  }
+};
+const getPasswordResetUrl = (req, token) => {
+  const configuredBaseUrl =
     process.env.RESET_PASSWORD_URL_BASE ||
     process.env.APP_ORIGIN ||
-    "http://localhost:5173";
+    "";
+  const baseUrl = configuredBaseUrl || (!isProduction() ? getRequestOrigin(req) || "http://localhost:5173" : "");
+
+  if (!baseUrl) {
+    throw new Error("Password reset URL base is not configured.");
+  }
+
+  if (isProduction() && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(baseUrl)) {
+    throw new Error("Password reset URL base must not point to localhost in production.");
+  }
 
   return `${baseUrl.replace(/\/$/, "")}/reset-password?token=${token}`;
 };
@@ -209,24 +239,57 @@ export const requestPasswordReset = async (req, res) => {
 
     const resetToken = crypto.randomBytes(32).toString("hex");
     const hashedResetToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-    const resetUrl = getPasswordResetUrl(resetToken);
+    let resetUrl;
+    try {
+      resetUrl = getPasswordResetUrl(req, resetToken);
+    } catch (configError) {
+      console.error(`Password reset URL configuration failed: ${configError.message}`);
+      return res.status(503).json({
+        message: "Password reset is not configured. Please contact support.",
+      });
+    }
 
     user.passwordResetToken = hashedResetToken;
     user.passwordResetExpires = new Date(Date.now() + 1000 * 60 * 30);
     await user.save();
 
-    await sendEmail({
-      to: user.email,
-      subject: "Reset your Digital Proof of Work password",
-      text: `Hello ${user.name},\n\nUse this link to reset your password: ${resetUrl}\n\nThis link will expire in 30 minutes.\n\nIf you did not request this, you can ignore this email.`,
-      html: `
-        <p>Hello ${user.name},</p>
-        <p>Use the link below to reset your Digital Proof of Work password:</p>
-        <p><a href="${resetUrl}">${resetUrl}</a></p>
-        <p>This link will expire in 30 minutes.</p>
-        <p>If you did not request this, you can ignore this email.</p>
-      `,
-    });
+    try {
+      const safeName = escapeHtml(user.name);
+      const safeResetUrl = escapeHtml(resetUrl);
+      await sendEmail({
+        to: user.email,
+        subject: "Reset your Digital Proof of Work password",
+        text: `Hello ${user.name},\n\nUse this link to reset your password: ${resetUrl}\n\nThis link will expire in 30 minutes.\n\nIf you did not request this, you can ignore this email.`,
+        html: `
+          <p>Hello ${safeName},</p>
+          <p>Use the link below to reset your Digital Proof of Work password:</p>
+          <p><a href="${safeResetUrl}">${safeResetUrl}</a></p>
+          <p>This link will expire in 30 minutes.</p>
+          <p>If you did not request this, you can ignore this email.</p>
+        `,
+      });
+    } catch (emailError) {
+      console.error(`Password reset email failed: ${emailError.message}`);
+
+      if (isProduction()) {
+        return res.status(503).json({
+          message: "Password reset email could not be sent. Please contact support.",
+        });
+      }
+
+      await createAuditEvent({
+        actor: user._id,
+        action: "user.password_reset_requested",
+        entityType: "User",
+        entityId: user._id,
+        metadata: { owner: String(user._id), emailDelivery: "failed_dev_link_returned" },
+      });
+
+      return res.status(200).json({
+        message: "Email delivery failed in development. Use the reset link below.",
+        resetUrl,
+      });
+    }
 
     await createAuditEvent({
       actor: user._id,

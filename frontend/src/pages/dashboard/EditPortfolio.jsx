@@ -28,6 +28,8 @@ function AvatarFallback({ name }) {
 function EditPortfolio() {
   const navigate = useNavigate();
   const { user, setUser } = useContext(AuthContext);
+  const role = user?.role === "administrator" ? "admin" : user?.role || "student";
+  const showStudentFields = role === "student";
   const [formData, setFormData] = useState({
     bio: "",
     skills: "",
@@ -44,15 +46,15 @@ function EditPortfolio() {
       .then(({ data }) => {
         setFormData({
           bio: data.bio || "",
-          skills: (data.skills || []).join(", "),
-          githubLink: data.githubLink || "",
+          skills: showStudentFields ? (data.skills || []).join(", ") : "",
+          githubLink: showStudentFields ? data.githubLink || "" : "",
           profileImage: data.studentId?.profileImage || user?.profileImage || "",
-          certificates: data.certificates?.length ? data.certificates : [emptyCertificate],
+          certificates: showStudentFields && data.certificates?.length ? data.certificates : [emptyCertificate],
         });
         setStatus("ready");
       })
       .catch(() => setStatus("ready"));
-  }, [user?.profileImage]);
+  }, [showStudentFields, user?.profileImage]);
 
   const handleChange = (event) => {
     setFormData({ ...formData, [event.target.name]: event.target.value });
@@ -118,22 +120,34 @@ function EditPortfolio() {
     try {
       const payload = {
         bio: formData.bio,
-        githubLink: formData.githubLink,
         profileImage: formData.profileImage,
-        skills: formData.skills.split(",").map((skill) => skill.trim()).filter(Boolean),
-        certificates: formData.certificates.filter((certificate) => certificate.title || certificate.fileUrl),
       };
 
+      if (showStudentFields) {
+        payload.githubLink = formData.githubLink;
+        payload.skills = formData.skills.split(",").map((skill) => skill.trim()).filter(Boolean);
+        payload.certificates = formData.certificates.filter((certificate) => certificate.title || certificate.fileUrl);
+      }
+
       const { data } = await API.put("/portfolio", payload);
-      const nextUser = { ...user, profileImage: data.studentId?.profileImage || formData.profileImage };
+      const nextUser = {
+        ...user,
+        bio: data.bio || "",
+        skills: data.skills || [],
+        profileImage: data.studentId?.profileImage || formData.profileImage,
+        socialLinks: {
+          ...(user?.socialLinks || {}),
+          github: data.githubLink || user?.socialLinks?.github || "",
+        },
+      };
       localStorage.setItem("userInfo", JSON.stringify(nextUser));
       setUser(nextUser);
       setFormData({
         bio: data.bio || "",
-        skills: (data.skills || []).join(", "),
-        githubLink: data.githubLink || "",
+        skills: showStudentFields ? (data.skills || []).join(", ") : "",
+        githubLink: showStudentFields ? data.githubLink || "" : "",
         profileImage: data.studentId?.profileImage || formData.profileImage || "",
-        certificates: data.certificates?.length ? data.certificates : [emptyCertificate],
+        certificates: showStudentFields && data.certificates?.length ? data.certificates : [emptyCertificate],
       });
       setMessageTone("success");
       setMessage("Profile updated successfully.");
@@ -150,8 +164,12 @@ function EditPortfolio() {
       <div className="mx-auto max-w-4xl">
         <div className="mb-6">
           <div>
-            <h1 className="text-3xl font-bold">Edit Student Profile</h1>
-            <p className="text-slate-600">Manage your profile picture, bio, skills, GitHub profile, and certificates.</p>
+            <h1 className="text-3xl font-bold">Edit Profile</h1>
+            <p className="text-slate-600">
+              {showStudentFields
+                ? "Manage your profile picture, bio, skills, GitHub profile, and certificates."
+                : "Manage your profile picture and bio."}
+            </p>
           </div>
         </div>
 
@@ -195,37 +213,41 @@ function EditPortfolio() {
               <textarea name="bio" value={formData.bio} rows="5" className="rounded border p-3" onChange={handleChange} />
             </label>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="grid gap-1">
-                <span className="font-medium">Skills</span>
-                <input name="skills" value={formData.skills} placeholder="React, Node.js, MongoDB" className="rounded border p-3" onChange={handleChange} />
-              </label>
-              <label className="grid gap-1">
-                <span className="font-medium">GitHub profile</span>
-                <input name="githubLink" value={formData.githubLink} className="rounded border p-3" onChange={handleChange} />
-              </label>
-            </div>
-
-            <section className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="font-semibold">Certificates</h2>
-                <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={addCertificate}>
-                  Add certificate
-                </button>
-              </div>
-
-              {formData.certificates.map((certificate, index) => (
-                <div key={index} className="grid gap-3 rounded border border-slate-200 bg-white p-4 md:grid-cols-2">
-                  <input placeholder="Certificate title" value={certificate.title || ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "title", event.target.value)} />
-                  <input placeholder="Certificate URL" value={certificate.fileUrl || ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "fileUrl", event.target.value)} />
-                  <input placeholder="Issued by" value={certificate.issuedBy || ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "issuedBy", event.target.value)} />
-                  <input type="date" value={certificate.issuedDate ? String(certificate.issuedDate).slice(0, 10) : ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "issuedDate", event.target.value)} />
-                  <button type="button" className="rounded border border-red-200 px-3 py-2 text-red-700 md:col-span-2" onClick={() => removeCertificate(index)}>
-                    Remove certificate
-                  </button>
+            {showStudentFields && (
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="grid gap-1">
+                    <span className="font-medium">Skills</span>
+                    <input name="skills" value={formData.skills} placeholder="React, Node.js, MongoDB" className="rounded border p-3" onChange={handleChange} />
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="font-medium">GitHub profile</span>
+                    <input name="githubLink" value={formData.githubLink} className="rounded border p-3" onChange={handleChange} />
+                  </label>
                 </div>
-              ))}
-            </section>
+
+                <section className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-semibold">Certificates</h2>
+                    <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={addCertificate}>
+                      Add certificate
+                    </button>
+                  </div>
+
+                  {formData.certificates.map((certificate, index) => (
+                    <div key={index} className="grid gap-3 rounded border border-slate-200 bg-white p-4 md:grid-cols-2">
+                      <input placeholder="Certificate title" value={certificate.title || ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "title", event.target.value)} />
+                      <input placeholder="Certificate URL" value={certificate.fileUrl || ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "fileUrl", event.target.value)} />
+                      <input placeholder="Issued by" value={certificate.issuedBy || ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "issuedBy", event.target.value)} />
+                      <input type="date" value={certificate.issuedDate ? String(certificate.issuedDate).slice(0, 10) : ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "issuedDate", event.target.value)} />
+                      <button type="button" className="rounded border border-red-200 px-3 py-2 text-red-700 md:col-span-2" onClick={() => removeCertificate(index)}>
+                        Remove certificate
+                      </button>
+                    </div>
+                  ))}
+                </section>
+              </>
+            )}
 
             <div className="grid gap-3 pt-2 md:grid-cols-3">
               <button disabled={status === "saving"} className="rounded bg-slate-950 px-5 py-3 text-white disabled:opacity-60">

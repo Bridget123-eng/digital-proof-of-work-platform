@@ -56,17 +56,25 @@ export const createPortfolio = async (req, res) => {
     }
 
     // Create portfolio
+    const normalizedBio = normalizeText(bio, 2000);
+    const normalizedSkills = normalizeSkills(skills);
+    const normalizedGithubLink = normalizeText(githubLink, 500);
+    const normalizedProfileImage = profileImage ? normalizeProfileImage(profileImage) : "";
+
     const portfolio = await Portfolio.create({
       studentId: req.user._id,
-      bio: normalizeText(bio, 2000),
-      skills: normalizeSkills(skills),
-      githubLink: normalizeText(githubLink, 500),
+      bio: normalizedBio,
+      skills: normalizedSkills,
+      githubLink: normalizedGithubLink,
       certificates: normalizeCertificates(certificates),
     });
 
-    if (profileImage) {
-      await User.findByIdAndUpdate(req.user._id, { profileImage: normalizeProfileImage(profileImage) });
-    }
+    await User.findByIdAndUpdate(req.user._id, {
+      bio: normalizedBio,
+      skills: normalizedSkills,
+      ...(normalizedProfileImage ? { profileImage: normalizedProfileImage } : {}),
+      "socialLinks.github": normalizedGithubLink,
+    });
 
     await createAuditEvent({
       actor: req.user._id,
@@ -124,25 +132,30 @@ export const updatePortfolio = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    portfolio.bio = req.body.bio !== undefined ? normalizeText(req.body.bio, 2000) : portfolio.bio;
+    const nextBio = req.body.bio !== undefined ? normalizeText(req.body.bio, 2000) : portfolio.bio;
+    const nextSkills = req.body.skills !== undefined ? normalizeSkills(req.body.skills) : portfolio.skills;
+    const nextGithubLink =
+      req.body.githubLink !== undefined ? normalizeText(req.body.githubLink, 500) : portfolio.githubLink;
 
-    portfolio.skills = req.body.skills !== undefined
-      ? normalizeSkills(req.body.skills)
-      : portfolio.skills;
-
-    portfolio.githubLink = req.body.githubLink !== undefined
-      ? normalizeText(req.body.githubLink, 500)
-      : portfolio.githubLink;
+    portfolio.bio = nextBio;
+    portfolio.skills = nextSkills;
+    portfolio.githubLink = nextGithubLink;
 
     if (Array.isArray(req.body.certificates)) {
       portfolio.certificates = normalizeCertificates(req.body.certificates);
     }
 
+    const userUpdates = {
+      bio: nextBio,
+      skills: nextSkills,
+      "socialLinks.github": nextGithubLink,
+    };
+
     if (req.body.profileImage !== undefined) {
-      await User.findByIdAndUpdate(req.user._id, {
-        profileImage: normalizeProfileImage(req.body.profileImage),
-      });
+      userUpdates.profileImage = normalizeProfileImage(req.body.profileImage);
     }
+
+    await User.findByIdAndUpdate(req.user._id, userUpdates);
 
     const updatedPortfolio =
       await portfolio.save();

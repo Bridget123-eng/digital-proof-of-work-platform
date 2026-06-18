@@ -12,6 +12,7 @@ function ResetPassword() {
     confirmPassword: "",
   });
   const [message, setMessage] = useState("");
+  const [resetUrl, setResetUrl] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -25,16 +26,18 @@ function ResetPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
+    setResetUrl("");
     setErrorMessage("");
 
     setIsSubmitting(true);
 
     try {
       if (!token) {
-        await API.post("/auth/forgot-password", {
+        const { data } = await API.post("/auth/forgot-password", {
           email: formData.email,
         });
-        setMessage("If the email is registered, a password reset link has been sent.");
+        setMessage(data.message || "If the email is registered, a password reset link has been sent.");
+        setResetUrl(data.resetUrl || "");
       } else {
         if (formData.password !== formData.confirmPassword) {
           setErrorMessage("Passwords do not match.");
@@ -126,6 +129,15 @@ function ResetPassword() {
           <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             {message}
           </p>
+        )}
+
+        {resetUrl && (
+          <a
+            className="mt-3 block break-all rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800"
+            href={resetUrl}
+          >
+            Open development reset link
+          </a>
         )}
 
         <button

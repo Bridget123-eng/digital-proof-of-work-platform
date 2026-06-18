@@ -12,15 +12,13 @@ const dashboardConfig = {
   },
   verifier: {
     badge: "Verifier workspace",
-    heading: "Review evidence and keep the trust layer moving.",
-    description:
-      "Work through the verification queue, make auditable decisions, and keep activity history visible.",
+    heading: "",
+    description: "",
   },
   reviewer: {
     badge: "Reviewer workspace",
-    heading: "Review evidence and keep the trust layer moving.",
-    description:
-      "Work through the verification queue, make auditable decisions, and keep activity history visible.",
+    heading: "",
+    description: "",
   },
   recruiter: {
     badge: "Recruiter workspace",
@@ -73,21 +71,14 @@ const emptyConfigForm = {
 };
 
 const normalizeRole = (role) => (role === "administrator" ? "admin" : role || "student");
+const buildConfigForm = (configuration = {}) => ({
+  badgeRules: (configuration.badgeRules || []).join("\n"),
+  verificationCriteria: (configuration.verificationCriteria || []).join("\n"),
+  aiMode: configuration.aiSettings?.mode || "",
+  humanReviewRequired: configuration.aiSettings?.humanReviewRequired !== false,
+  notificationTemplates: (configuration.notificationTemplates || []).join("\n"),
+});
 const formatStatusLabel = (status) => String(status || "pending").replace(/_/g, " ");
-const calculateProfileCompletion = (portfolio) => {
-  if (!portfolio) {
-    return 0;
-  }
-
-  const checks = [
-    Boolean(portfolio.bio?.trim()),
-    Boolean(portfolio.githubLink?.trim()),
-    (portfolio.skills || []).length > 0,
-    (portfolio.certificates || []).length > 0,
-  ];
-
-  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
-};
 const getInitials = (name) =>
   String(name || "Student")
     .split(" ")
@@ -178,11 +169,18 @@ function Dashboard() {
             ])
           );
           setRowEdits(nextRowEdits);
-          if (!badgeForm.userId && nextData.users?.length) {
-            setBadgeForm((current) => ({
-              ...current,
-              userId: nextData.users[0]._id,
-            }));
+          if (nextData.users?.length) {
+            setBadgeForm((current) =>
+              current.userId
+                ? current
+                : {
+                    ...current,
+                    userId: nextData.users[0]._id,
+                  }
+            );
+          }
+          if (role === "admin" && nextData.adminOverview?.configuration) {
+            setConfigForm(buildConfigForm(nextData.adminOverview.configuration));
           }
           setStatus("ready");
         }
@@ -201,28 +199,18 @@ function Dashboard() {
     };
   }, [role, location.key]);
 
-  useEffect(() => {
-    if (!user?.profileImage) {
-      return;
-    }
-
-    setDashboardData((current) => ({
-      ...current,
-      portfolio: current.portfolio
-        ? {
-            ...current.portfolio,
-            studentId: current.portfolio.studentId
-              ? { ...current.portfolio.studentId, profileImage: user.profileImage }
-              : current.portfolio.studentId,
-          }
-        : current.portfolio,
-    }));
-  }, [user?.profileImage]);
-
   const unreadNotifications = dashboardData.notifications.filter((item) => !item.read).length;
   const adminOverview = dashboardData.adminOverview;
+  const displayPortfolio =
+    dashboardData.portfolio && user?.profileImage
+      ? {
+          ...dashboardData.portfolio,
+          studentId: dashboardData.portfolio.studentId
+            ? { ...dashboardData.portfolio.studentId, profileImage: user.profileImage }
+            : dashboardData.portfolio.studentId,
+        }
+      : dashboardData.portfolio;
   const studentProjects = dashboardData.projects || [];
-  const profileCompletion = calculateProfileCompletion(dashboardData.portfolio);
   const studentProjectStats = {
     submitted: studentProjects.length,
     pending: studentProjects.filter((project) => ["pending", "in_review"].includes(project.verificationStatus)).length,
@@ -231,57 +219,6 @@ function Dashboard() {
       ["rejected", "changes_requested"].includes(project.verificationStatus)
     ).length,
   };
-  const roleOverviewCopy = {
-    student: {
-      title: "Student progress summary",
-      description:
-        "Keep your profile complete, submit strong evidence, and watch each verification step without needing any admin tools in this workspace.",
-      note:
-        "Your student workspace is limited to your own portfolio, projects, badges, and notifications. Verification and role changes stay server-protected.",
-    },
-    verifier: {
-      title: "Verifier workspace summary",
-      description:
-        "Review pending evidence, make auditable decisions, and keep the trust layer moving with role-safe tools only.",
-      note:
-        "Verification actions are server-checked and recorded in the audit trail so reviewer decisions remain accountable.",
-    },
-    reviewer: {
-      title: "Reviewer workspace summary",
-      description:
-        "Review pending evidence, make auditable decisions, and keep the trust layer moving with role-safe tools only.",
-      note:
-        "Verification actions are server-checked and recorded in the audit trail so reviewer decisions remain accountable.",
-    },
-    recruiter: {
-      title: "Recruiter workspace summary",
-      description:
-        "Search trusted public work, compare verified signals, and focus on candidate quality instead of unverified claims.",
-      note:
-        "Recruiters only see the discovery and analytics surfaces intended for hiring workflows, not admin or review controls.",
-    },
-    admin: {
-      title: "Administrator workspace summary",
-      description:
-        "Manage users, reviews, badges, analytics, monitoring, and platform rules from a single audited control surface.",
-      note:
-        "Suspended users are blocked from protected routes, role changes are server-checked, and admin events are recorded in the audit trail.",
-    },
-  };
-  const roleOverview = roleOverviewCopy[role] || roleOverviewCopy.student;
-
-  useEffect(() => {
-    if (role === "admin" && adminOverview?.configuration) {
-      setConfigForm({
-        badgeRules: (adminOverview.configuration.badgeRules || []).join("\n"),
-        verificationCriteria: (adminOverview.configuration.verificationCriteria || []).join("\n"),
-        aiMode: adminOverview.configuration.aiSettings?.mode || "",
-        humanReviewRequired: adminOverview.configuration.aiSettings?.humanReviewRequired !== false,
-        notificationTemplates: (adminOverview.configuration.notificationTemplates || []).join("\n"),
-      });
-    }
-  }, [role, adminOverview]);
-
   const roleActions = {
     student: [
       { label: "Edit profile", type: "route", route: "/edit-portfolio", detail: "Complete your verified profile." },
@@ -291,34 +228,34 @@ function Dashboard() {
       { label: "Badges", type: "route", route: "/my-badges", detail: "Review trust signals earned." },
     ],
     verifier: [
-      { label: "Verification queue", type: "section", section: "queue", detail: "Review pending submissions." },
-      { label: "Review workspace", type: "section", section: "review-workspace", detail: "Open evidence, compare proof, and inspect AI analysis." },
-      { label: "Reviewer analytics", type: "section", section: "reviewer-analytics", detail: "Track completed reviews and turnaround." },
-      { label: "Audit logs", type: "section", section: "audit", detail: "Inspect who reviewed what and when." },
+      { label: "Verification queue", type: "route", route: "/workspace/queue", detail: "Review pending submissions." },
+      { label: "Review workspace", type: "route", route: "/workspace/review-workspace", detail: "Open evidence, compare proof, and inspect AI analysis." },
+      { label: "Reviewer analytics", type: "route", route: "/workspace/reviewer-analytics", detail: "Track completed reviews and turnaround." },
+      { label: "Audit logs", type: "route", route: "/workspace/audit", detail: "Inspect who reviewed what and when." },
       { label: "My profile", type: "route", route: "/edit-portfolio", detail: "Update your verifier profile." },
     ],
     reviewer: [
-      { label: "Verification queue", type: "section", section: "queue", detail: "Review pending submissions." },
-      { label: "Review workspace", type: "section", section: "review-workspace", detail: "Open evidence, compare proof, and inspect AI analysis." },
-      { label: "Reviewer analytics", type: "section", section: "reviewer-analytics", detail: "Track completed reviews and turnaround." },
-      { label: "Audit logs", type: "section", section: "audit", detail: "Inspect who reviewed what and when." },
+      { label: "Verification queue", type: "route", route: "/workspace/queue", detail: "Review pending submissions." },
+      { label: "Review workspace", type: "route", route: "/workspace/review-workspace", detail: "Open evidence, compare proof, and inspect AI analysis." },
+      { label: "Reviewer analytics", type: "route", route: "/workspace/reviewer-analytics", detail: "Track completed reviews and turnaround." },
+      { label: "Audit logs", type: "route", route: "/workspace/audit", detail: "Inspect who reviewed what and when." },
       { label: "My profile", type: "route", route: "/edit-portfolio", detail: "Update your reviewer profile." },
     ],
     recruiter: [
       { label: "Explore work", type: "route", route: "/explore", detail: "Search verified public projects." },
-      { label: "Reports snapshot", type: "section", section: "analytics", detail: "Check verification analytics." },
-      { label: "Public candidates", type: "section", section: "public-projects", detail: "Review trusted portfolios." },
+      { label: "Reports snapshot", type: "route", route: "/workspace/analytics", detail: "Check verification analytics." },
+      { label: "Public candidates", type: "route", route: "/workspace/public-projects", detail: "Review trusted portfolios." },
       { label: "My profile", type: "route", route: "/edit-portfolio", detail: "Maintain your recruiter profile." },
     ],
     admin: [
-      { label: "User management", type: "section", section: "users", detail: "Create, suspend, reset, and reassign accounts." },
-      { label: "Verification management", type: "section", section: "verification-management", detail: "Monitor pending, rejected, and bottlenecked reviews." },
-      { label: "Badge management", type: "section", section: "badge-management", detail: "Award and monitor platform badges." },
-      { label: "Audit trail", type: "section", section: "audit-trail", detail: "Inspect critical security and workflow events." },
-      { label: "Data exports", type: "section", section: "data-exports", detail: "Export users, audit, and analytics reports." },
-      { label: "Analytics", type: "section", section: "analytics-dashboard", detail: "Track platform-wide metrics." },
-      { label: "System monitoring", type: "section", section: "system-monitoring", detail: "Check API, storage, AI, and job status." },
-      { label: "Configuration", type: "section", section: "configuration", detail: "Review current platform rules and templates." },
+      { label: "User management", type: "route", route: "/workspace/users", detail: "Create, suspend, reset, and reassign accounts." },
+      { label: "Verification management", type: "route", route: "/workspace/verification-management", detail: "Monitor pending, rejected, and bottlenecked reviews." },
+      { label: "Badge management", type: "route", route: "/workspace/badge-management", detail: "Award and monitor platform badges." },
+      { label: "Audit trail", type: "route", route: "/workspace/audit-trail", detail: "Inspect critical security and workflow events." },
+      { label: "Data exports", type: "route", route: "/workspace/data-exports", detail: "Export users, audit, and analytics reports." },
+      { label: "Analytics", type: "route", route: "/workspace/analytics-dashboard", detail: "Track platform-wide metrics." },
+      { label: "System monitoring", type: "route", route: "/workspace/system-monitoring", detail: "Check API, storage, AI, and job status." },
+      { label: "Configuration", type: "route", route: "/workspace/configuration", detail: "Review current platform rules and templates." },
       { label: "Seed demo data", type: "action", action: "seed-demo", detail: "Prepare safe presentation accounts." },
     ],
   };
@@ -405,23 +342,6 @@ function Dashboard() {
       } finally {
         setBusyKey("");
       }
-    }
-  };
-
-  const markNotificationRead = async (notificationId) => {
-    try {
-      setBusyKey(`notification-${notificationId}`);
-      await API.patch(`/system/notifications/${notificationId}/read`);
-      setDashboardData((current) => ({
-        ...current,
-        notifications: current.notifications.map((item) =>
-          item._id === notificationId ? { ...item, read: true } : item
-        ),
-      }));
-    } catch (error) {
-      setActionMessage(error.response?.data?.message || "Unable to update the notification.");
-    } finally {
-      setBusyKey("");
     }
   };
 
@@ -601,9 +521,9 @@ function Dashboard() {
                       {config.badge}
                     </div>
                     <div className="flex flex-wrap items-center gap-4 rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-4">
-                      {dashboardData.portfolio?.studentId?.profileImage || user?.profileImage ? (
+                      {displayPortfolio?.studentId?.profileImage || user?.profileImage ? (
                         <img
-                          src={dashboardData.portfolio?.studentId?.profileImage || user?.profileImage}
+                          src={displayPortfolio?.studentId?.profileImage || user?.profileImage}
                           alt={user?.name || "Student"}
                           className="h-16 w-16 rounded-full border border-white/10 object-cover"
                         />
@@ -614,10 +534,16 @@ function Dashboard() {
                       )}
                       <p className="text-2xl font-semibold text-white">{user?.name || "Student"}</p>
                     </div>
-                    <div>
-                      <h1 className="mt-4 max-w-2xl text-4xl font-semibold leading-tight">{config.heading}</h1>
-                      <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">{config.description}</p>
-                    </div>
+                    {(config.heading || config.description) && (
+                      <div>
+                        {config.heading && (
+                          <h1 className="mt-4 max-w-2xl text-4xl font-semibold leading-tight">{config.heading}</h1>
+                        )}
+                        {config.description && (
+                          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">{config.description}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
@@ -646,7 +572,7 @@ function Dashboard() {
                 </div>
               </div>
             ) : (
-              <div className="grid gap-6 p-6 lg:grid-cols-[1.05fr_0.95fr] lg:p-8">
+              <div className="p-6 lg:p-8">
                 <div className="space-y-6">
                   <div className="space-y-4">
                     <p className="text-sm uppercase tracking-[0.24em] text-sky-300">Digital Proof of Work</p>
@@ -654,9 +580,9 @@ function Dashboard() {
                       {config.badge}
                     </div>
                     <div className="flex flex-wrap items-center gap-4 rounded-3xl border border-white/10 bg-slate-950/35 p-4">
-                      {dashboardData.portfolio?.studentId?.profileImage || user?.profileImage ? (
+                      {displayPortfolio?.studentId?.profileImage || user?.profileImage ? (
                         <img
-                          src={dashboardData.portfolio?.studentId?.profileImage || user?.profileImage}
+                          src={displayPortfolio?.studentId?.profileImage || user?.profileImage}
                           alt={user?.name || "User"}
                           className="h-16 w-16 rounded-full border border-white/10 object-cover"
                         />
@@ -667,10 +593,16 @@ function Dashboard() {
                       )}
                       <p className="text-2xl font-semibold text-white">{user?.name || "User"}</p>
                     </div>
-                    <div>
-                      <h1 className="mt-4 max-w-2xl text-4xl font-semibold leading-tight">{config.heading}</h1>
-                      <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">{config.description}</p>
-                    </div>
+                    {(config.heading || config.description) && (
+                      <div>
+                        {config.heading && (
+                          <h1 className="mt-4 max-w-2xl text-4xl font-semibold leading-tight">{config.heading}</h1>
+                        )}
+                        {config.description && (
+                          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">{config.description}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3">
@@ -697,40 +629,6 @@ function Dashboard() {
                     ))}
                   </div>
                 </div>
-
-                <aside className="rounded-[1.75rem] border border-white/10 bg-slate-950/60 p-6">
-                  <div className="flex h-full flex-col gap-6">
-                    <div>
-                      <p className="text-sm uppercase tracking-[0.24em] text-emerald-300">Role overview</p>
-                      <h2 className="mt-4 text-2xl font-semibold">{roleOverview.title}</h2>
-                      <p className="mt-3 text-sm leading-6 text-slate-300">
-                        {roleOverview.description}
-                      </p>
-                    </div>
-
-                    <div className="grid gap-3">
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Current role</p>
-                        <p className="mt-2 text-lg font-medium text-white">{role}</p>
-                      </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Unread notifications</p>
-                        <p className="mt-2 text-lg font-medium text-white">{unreadNotifications}</p>
-                      </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Profile owner</p>
-                        <p className="mt-2 text-lg font-medium text-white">{user?.name || "User"}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-auto rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
-                      <p className="text-sm font-semibold text-emerald-100">Security note</p>
-                      <p className="mt-2 text-sm leading-6 text-emerald-50/90">
-                        {roleOverview.note}
-                      </p>
-                    </div>
-                  </div>
-                </aside>
               </div>
             )}
           </section>
@@ -761,60 +659,6 @@ function Dashboard() {
 
           {status === "ready" && (
             <div className="grid gap-6">
-              {role !== "student" && (
-              <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm uppercase tracking-[0.22em] text-sky-300">Profile</p>
-                    <h2 className="mt-2 text-2xl font-semibold">Verified profile readiness</h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/edit-portfolio")}
-                    className="rounded-xl border border-slate-600 px-4 py-2 text-sm font-semibold text-white transition hover:border-sky-300"
-                  >
-                    Edit profile
-                  </button>
-                </div>
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-sm text-slate-400">Skills listed</p>
-                    <p className="mt-2 text-2xl font-semibold text-white">{dashboardData.portfolio?.skills?.length || 0}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-sm text-slate-400">Certificates linked</p>
-                    <p className="mt-2 text-2xl font-semibold text-white">{dashboardData.portfolio?.certificates?.length || 0}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-sm text-slate-400">Profile bio</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">
-                      {dashboardData.portfolio?.bio || "Add a short verified bio to strengthen your profile."}
-                    </p>
-                  </div>
-                </div>
-                {role === "student" && (
-                  <div className="mt-4 grid gap-4 md:grid-cols-3">
-                    <div className="rounded-2xl border border-white/10 bg-sky-400/10 p-4">
-                      <p className="text-sm text-sky-100">Profile completion</p>
-                      <p className="mt-2 text-2xl font-semibold text-white">{profileCompletion}%</p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-sm text-slate-400">GitHub profile</p>
-                      <p className="mt-2 text-sm text-slate-200">
-                        {dashboardData.portfolio?.githubLink ? "Connected and visible in your portfolio." : "Add your GitHub profile to strengthen credibility."}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-sm text-slate-400">Portfolio status</p>
-                      <p className="mt-2 text-sm text-slate-200">
-                        {profileCompletion === 100 ? "Ready for recruiters and reviewers." : "Complete the missing pieces before your next submission."}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </section>
-              )}
-
               {role === "student" && (
                 <section id="student-workflow" className="grid gap-6">
                   <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6 shadow-[0_30px_90px_-50px_rgba(14,165,233,0.8)]">
@@ -941,7 +785,7 @@ function Dashboard() {
                 </section>
               )}
 
-              {(role === "verifier" || role === "reviewer" || role === "admin") && (
+              {role === "admin" && (
                 <section id={role === "admin" ? "verification-management" : "queue"} className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -1177,7 +1021,7 @@ function Dashboard() {
                 </section>
               )}
 
-              {(role === "recruiter" || role === "admin") && (
+              {role === "admin" && (
                 <section id={role === "admin" ? "analytics-dashboard" : "analytics"} className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
                   <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
                     <p className="text-sm uppercase tracking-[0.22em] text-sky-300">Analytics dashboard</p>
@@ -1592,72 +1436,18 @@ function Dashboard() {
                 </>
               )}
 
-              {(role === "verifier" || role === "reviewer") && (
-                <section id="audit" className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-                  <p className="text-sm uppercase tracking-[0.22em] text-sky-300">Audit trail</p>
-                  <h2 className="mt-2 text-2xl font-semibold">Reviewer audit logs</h2>
-                  <div className="mt-4 grid gap-3">
-                    {dashboardData.audit.length === 0 && (
-                      <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 p-4 text-sm text-slate-300">
-                        No audit events are visible for this role yet.
-                      </div>
-                    )}
-                    {dashboardData.audit.slice(0, 8).map((event) => (
-                      <article key={event._id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-200">{event.action}</p>
-                        <p className="mt-1 text-sm text-slate-300">
-                          Actor: {event.actor?.name || "System"} | Target: {event.metadata?.projectTitle || event.entityType}
-                        </p>
-                        {event.metadata?.status && (
-                          <p className="mt-1 text-sm text-slate-300">
-                            Decision: {formatStatusLabel(event.metadata.status)}
-                          </p>
-                        )}
-                        {event.metadata?.note && (
-                          <p className="mt-2 text-sm text-slate-400">Comment: {event.metadata.note}</p>
-                        )}
-                        <p className="mt-1 text-xs text-slate-400">{new Date(event.createdAt).toLocaleString()}</p>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {role !== "student" && (
-              <section id="notifications" className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-                <p className="text-sm uppercase tracking-[0.22em] text-emerald-300">Notifications</p>
-                <h2 className="mt-2 text-2xl font-semibold">Recent updates</h2>
-                <div className="mt-4 grid gap-3">
-                  {dashboardData.notifications.length === 0 && (
-                    <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 p-4 text-sm text-slate-300">
-                      No notifications yet.
-                    </div>
-                  )}
-                  {dashboardData.notifications.map((item) => (
-                    <article key={item._id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-lg font-semibold text-white">{item.title}</p>
-                          <p className="mt-1 text-sm text-slate-300">{item.message}</p>
-                        </div>
-                        {!item.read && (
-                          <button
-                            type="button"
-                            onClick={() => markNotificationRead(item._id)}
-                            disabled={busyKey === `notification-${item._id}`}
-                            className="rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-100 disabled:opacity-60"
-                          >
-                            Mark read
-                          </button>
-                        )}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-              )}
             </div>
           )}
+
+          <section className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="rounded-xl border border-slate-700 bg-slate-900/80 px-5 py-3 text-sm font-semibold text-white transition hover:border-sky-300"
+            >
+              Back
+            </button>
+          </section>
         </div>
       </div>
     </main>

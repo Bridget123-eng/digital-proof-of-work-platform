@@ -6,6 +6,7 @@ import Register from "../pages/auth/Register";
 import ResetPassword from "../pages/auth/ResetPassword";
 import Dashboard from "../pages/dashboard/Dashboard";
 import EditPortfolio from "../pages/dashboard/EditPortfolio";
+import WorkspaceDetail from "../pages/dashboard/WorkspaceDetail";
 import UploadProject from "../pages/dashboard/UploadProject";
 import MyProjects from "../pages/dashboard/Myprojects";
 import Notifications from "../pages/dashboard/Notifications";
@@ -45,6 +46,15 @@ function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={["student", "verifier", "reviewer", "recruiter", "admin"]}>
               <EditPortfolio />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/workspace/:view"
+          element={
+            <ProtectedRoute allowedRoles={["verifier", "reviewer", "recruiter", "admin"]}>
+              <WorkspaceDetail />
             </ProtectedRoute>
           }
         />

@@ -19,16 +19,8 @@ function MyProjects() {
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10 text-slate-950">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6">
           <h1 className="text-3xl font-bold">My Portfolio Projects</h1>
-          <div className="flex gap-2">
-            <button className="rounded border border-slate-300 px-4 py-2" onClick={() => navigate(-1)}>
-              Back
-            </button>
-            <Link className="rounded border border-slate-300 px-4 py-2" to="/dashboard">
-              Dashboard
-            </Link>
-          </div>
         </div>
 
         {status === "loading" && <p>Loading projects...</p>}
@@ -86,6 +78,15 @@ function MyProjects() {
               )}
             </article>
           ))}
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <button className="rounded border border-slate-300 px-4 py-3" type="button" onClick={() => navigate(-1)}>
+            Back
+          </button>
+          <Link className="rounded border border-slate-300 px-4 py-3 text-center" to="/dashboard">
+            Dashboard
+          </Link>
         </div>
       </div>
     </div>
