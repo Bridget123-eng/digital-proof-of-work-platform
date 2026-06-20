@@ -1,20 +1,17 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import API from "../../api/axios";
 
 function ResetPassword() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
   const [formData, setFormData] = useState({
     email: "",
-    password: "",
-    confirmPassword: "",
+    code: "",
   });
   const [message, setMessage] = useState("");
-  const [resetUrl, setResetUrl] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -26,32 +23,28 @@ function ResetPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
-    setResetUrl("");
     setErrorMessage("");
 
     setIsSubmitting(true);
 
     try {
-      if (!token) {
+      if (!codeSent) {
         const { data } = await API.post("/auth/forgot-password", {
           email: formData.email,
         });
-        setMessage(data.message || "If the email is registered, a password reset link has been sent.");
-        setResetUrl(data.resetUrl || "");
+        setMessage(data.message || "If the email is registered, a password reset code has been sent.");
+        setCodeSent(true);
       } else {
-        if (formData.password !== formData.confirmPassword) {
-          setErrorMessage("Passwords do not match.");
-          setIsSubmitting(false);
-          return;
-        }
-
-        await API.post("/auth/reset-password", {
-          token,
-          password: formData.password,
+        await API.post("/auth/verify-reset-code", {
+          email: formData.email,
+          code: formData.code,
         });
 
-        setMessage("Password reset successful. Redirecting to login...");
-        setTimeout(() => navigate("/login"), 900);
+        sessionStorage.setItem(
+          "passwordResetVerification",
+          JSON.stringify({ email: formData.email, code: formData.code })
+        );
+        navigate("/reset-password/new");
       }
     } catch (error) {
       setErrorMessage(
@@ -72,50 +65,38 @@ function ResetPassword() {
         <p className="text-sm font-semibold uppercase tracking-wide text-amber-700">
           Account recovery
         </p>
-        <h1 className="mt-2 text-3xl font-bold">
-          {token ? "Choose a new password" : "Reset Password"}
-        </h1>
+        <h1 className="mt-2 text-3xl font-bold">Reset Password</h1>
         <p className="mt-2 text-sm text-slate-600">
-          {token
-            ? "Set your new password below. This reset link expires after a short time."
-            : "Enter your registered email address and we will send you a reset link."}
+          {codeSent
+            ? "Enter the verification code sent to your email."
+            : "Enter your registered email address and we will send you a short-lived verification code."}
         </p>
 
         <div className="mt-6 grid gap-4">
-          {!token && (
+          <input
+            type="email"
+            name="email"
+            placeholder="Email"
+            className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500 disabled:bg-slate-100"
+            value={formData.email}
+            required
+            disabled={codeSent}
+            onChange={handleChange}
+          />
+          {codeSent && (
             <input
-              type="email"
-              name="email"
-              placeholder="Email"
+              type="text"
+              inputMode="numeric"
+              name="code"
+              placeholder="6-digit verification code"
               className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500"
-              value={formData.email}
+              value={formData.code}
+              minLength={6}
+              maxLength={6}
+              pattern="[0-9]{6}"
               required
               onChange={handleChange}
             />
-          )}
-          {token && (
-            <>
-              <input
-                type="password"
-                name="password"
-                placeholder="New password"
-                className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500"
-                value={formData.password}
-                minLength={6}
-                required
-                onChange={handleChange}
-              />
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Confirm new password"
-                className="rounded-md border border-slate-300 p-3 outline-none focus:border-amber-500"
-                value={formData.confirmPassword}
-                minLength={6}
-                required
-                onChange={handleChange}
-              />
-            </>
           )}
         </div>
 
@@ -131,20 +112,11 @@ function ResetPassword() {
           </p>
         )}
 
-        {resetUrl && (
-          <a
-            className="mt-3 block break-all rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800"
-            href={resetUrl}
-          >
-            Open development reset link
-          </a>
-        )}
-
         <button
           disabled={isSubmitting}
           className="mt-6 w-full rounded-md bg-amber-600 p-3 font-semibold text-white hover:bg-amber-700 disabled:bg-amber-300"
         >
-          {isSubmitting ? (token ? "Saving..." : "Sending...") : token ? "Save new password" : "Send reset link"}
+          {isSubmitting ? (codeSent ? "Verifying..." : "Sending...") : codeSent ? "Verify code" : "Send reset code"}
         </button>
 
         <p className="mt-4 text-center text-sm text-slate-600">

@@ -4,6 +4,7 @@ import Home from "../pages/public/Home";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import ResetPassword from "../pages/auth/ResetPassword";
+import NewPassword from "../pages/auth/NewPassword";
 import Dashboard from "../pages/dashboard/Dashboard";
 import EditPortfolio from "../pages/dashboard/EditPortfolio";
 import WorkspaceDetail from "../pages/dashboard/WorkspaceDetail";
@@ -26,6 +27,7 @@ function AppRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/reset-password/new" element={<NewPassword />} />
         <Route path="/explore" element={<Explore />} />
         <Route path="/profile/:id" element={<Profile />} />
         <Route path="/profile/user/:userId" element={<Profile />} />

@@ -29,36 +29,15 @@ const escapeHtml = (value) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-const getRequestOrigin = (req) => {
-  const origin = req.get("origin");
-  if (origin && origin !== "null") {
-    return origin;
-  }
-
-  try {
-    const referer = req.get("referer");
-    return referer ? new URL(referer).origin : "";
-  } catch {
-    return "";
-  }
-};
-const getPasswordResetUrl = (req, token) => {
-  const configuredBaseUrl =
-    process.env.RESET_PASSWORD_URL_BASE ||
-    process.env.APP_ORIGIN ||
-    "";
-  const baseUrl = configuredBaseUrl || (!isProduction() ? getRequestOrigin(req) || "http://localhost:5173" : "");
-
-  if (!baseUrl) {
-    throw new Error("Password reset URL base is not configured.");
-  }
-
-  if (isProduction() && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(baseUrl)) {
-    throw new Error("Password reset URL base must not point to localhost in production.");
-  }
-
-  return `${baseUrl.replace(/\/$/, "")}/reset-password?token=${token}`;
-};
+const createResetCode = () => String(crypto.randomInt(100000, 1000000));
+const hashResetCode = (email, code) =>
+  crypto.createHash("sha256").update(`${cleanEmail(email)}:${String(code || "").trim()}`).digest("hex");
+const findUserByValidResetCode = (email, code) =>
+  User.findOne({
+    email: cleanEmail(email),
+    passwordResetToken: hashResetCode(email, code),
+    passwordResetExpires: { $gt: new Date() },
+  });
 
 const buildUserResponse = (user) => ({
   _id: user._id,
@@ -227,7 +206,7 @@ export const requestPasswordReset = async (req, res) => {
 
     if (!user) {
       return res.status(200).json({
-        message: "If that email is registered, a password reset link has been sent.",
+        message: "If that email is registered, a password reset code has been sent.",
       });
     }
 
@@ -237,34 +216,25 @@ export const requestPasswordReset = async (req, res) => {
       });
     }
 
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    const hashedResetToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-    let resetUrl;
-    try {
-      resetUrl = getPasswordResetUrl(req, resetToken);
-    } catch (configError) {
-      console.error(`Password reset URL configuration failed: ${configError.message}`);
-      return res.status(503).json({
-        message: "Password reset is not configured. Please contact support.",
-      });
-    }
+    const resetCode = createResetCode();
+    const hashedResetCode = hashResetCode(normalizedEmail, resetCode);
 
-    user.passwordResetToken = hashedResetToken;
-    user.passwordResetExpires = new Date(Date.now() + 1000 * 60 * 30);
+    user.passwordResetToken = hashedResetCode;
+    user.passwordResetExpires = new Date(Date.now() + 1000 * 60 * 10);
     await user.save();
 
     try {
       const safeName = escapeHtml(user.name);
-      const safeResetUrl = escapeHtml(resetUrl);
+      const safeResetCode = escapeHtml(resetCode);
       await sendEmail({
         to: user.email,
         subject: "Reset your Digital Proof of Work password",
-        text: `Hello ${user.name},\n\nUse this link to reset your password: ${resetUrl}\n\nThis link will expire in 30 minutes.\n\nIf you did not request this, you can ignore this email.`,
+        text: `Hello ${user.name},\n\nUse this verification code to reset your password: ${resetCode}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this, you can ignore this email.`,
         html: `
           <p>Hello ${safeName},</p>
-          <p>Use the link below to reset your Digital Proof of Work password:</p>
-          <p><a href="${safeResetUrl}">${safeResetUrl}</a></p>
-          <p>This link will expire in 30 minutes.</p>
+          <p>Use this verification code to reset your Digital Proof of Work password:</p>
+          <p style="font-size: 24px; font-weight: 700; letter-spacing: 0.18em;">${safeResetCode}</p>
+          <p>This code will expire in 10 minutes.</p>
           <p>If you did not request this, you can ignore this email.</p>
         `,
       });
@@ -282,12 +252,11 @@ export const requestPasswordReset = async (req, res) => {
         action: "user.password_reset_requested",
         entityType: "User",
         entityId: user._id,
-        metadata: { owner: String(user._id), emailDelivery: "failed_dev_link_returned" },
+        metadata: { owner: String(user._id), emailDelivery: "failed" },
       });
 
-      return res.status(200).json({
-        message: "Email delivery failed in development. Use the reset link below.",
-        resetUrl,
+      return res.status(503).json({
+        message: "Unable to send reset code. Please check email configuration and try again.",
       });
     }
 
@@ -300,7 +269,43 @@ export const requestPasswordReset = async (req, res) => {
     });
 
     res.status(200).json({
-      message: "If that email is registered, a password reset link has been sent.",
+      message: "If that email is registered, a password reset code has been sent.",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const verifyPasswordResetCode = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    const normalizedEmail = cleanEmail(email);
+    const normalizedCode = String(code || "").trim();
+
+    if (!normalizedEmail || !normalizedCode) {
+      return res.status(400).json({
+        message: "Email and reset code are required",
+      });
+    }
+
+    if (!/^\d{6}$/.test(normalizedCode)) {
+      return res.status(400).json({
+        message: "Reset code must be 6 digits",
+      });
+    }
+
+    const user = await findUserByValidResetCode(normalizedEmail, normalizedCode);
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Reset code is invalid or has expired",
+      });
+    }
+
+    res.status(200).json({
+      message: "Reset code verified",
     });
   } catch (error) {
     res.status(500).json({
@@ -311,11 +316,13 @@ export const requestPasswordReset = async (req, res) => {
 
 export const resetPassword = async (req, res) => {
   try {
-    const { token, password } = req.body;
+    const { email, code, password } = req.body;
+    const normalizedEmail = cleanEmail(email);
+    const normalizedCode = String(code || "").trim();
 
-    if (!token || !password) {
+    if (!normalizedEmail || !normalizedCode || !password) {
       return res.status(400).json({
-        message: "Reset token and new password are required",
+        message: "Email, reset code, and new password are required",
       });
     }
 
@@ -325,16 +332,17 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    const hashedResetToken = crypto.createHash("sha256").update(token).digest("hex");
+    if (!/^\d{6}$/.test(normalizedCode)) {
+      return res.status(400).json({
+        message: "Reset code must be 6 digits",
+      });
+    }
 
-    const user = await User.findOne({
-      passwordResetToken: hashedResetToken,
-      passwordResetExpires: { $gt: new Date() },
-    });
+    const user = await findUserByValidResetCode(normalizedEmail, normalizedCode);
 
     if (!user) {
       return res.status(400).json({
-        message: "Reset link is invalid or has expired",
+        message: "Reset code is invalid or has expired",
       });
     }
 

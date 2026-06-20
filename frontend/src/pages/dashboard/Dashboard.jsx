@@ -693,7 +693,7 @@ function Dashboard() {
                 </section>
               )}
 
-              {role === "admin" && (
+              {role === "admin-inline-disabled" && (
                 <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
                   <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -785,7 +785,7 @@ function Dashboard() {
                 </section>
               )}
 
-              {role === "admin" && (
+              {role === "admin-inline-disabled" && (
                 <section id={role === "admin" ? "verification-management" : "queue"} className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -1021,7 +1021,7 @@ function Dashboard() {
                 </section>
               )}
 
-              {role === "admin" && (
+              {role === "admin-inline-disabled" && (
                 <section id={role === "admin" ? "analytics-dashboard" : "analytics"} className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
                   <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
                     <p className="text-sm uppercase tracking-[0.22em] text-sky-300">Analytics dashboard</p>

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import API from "../../api/axios";
 
 function Explore() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [status, setStatus] = useState("loading");
 
@@ -18,14 +19,9 @@ function Explore() {
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10 text-slate-950">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Verified Public Work</h1>
-            <p className="text-slate-600">Only human-approved public evidence appears here.</p>
-          </div>
-          <Link to="/" className="rounded border border-slate-300 px-4 py-2">
-            Home
-          </Link>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Verified Public Work</h1>
+          <p className="text-slate-600">Only human-approved public evidence appears here.</p>
         </div>
 
         {status === "loading" && <p>Loading verified projects...</p>}
@@ -62,6 +58,15 @@ function Explore() {
               )}
             </article>
           ))}
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <button className="rounded border border-slate-300 px-4 py-3" type="button" onClick={() => navigate(-1)}>
+            Back
+          </button>
+          <Link className="rounded border border-slate-300 px-4 py-3 text-center" to="/dashboard">
+            Dashboard
+          </Link>
         </div>
       </div>
     </div>
