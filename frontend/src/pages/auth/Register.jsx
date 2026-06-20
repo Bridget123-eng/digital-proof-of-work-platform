@@ -54,7 +54,6 @@ function Register() {
           </p>
           <h2 className="mt-2 text-3xl font-bold">Create Account</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Public registration is for students only. Verifier and recruiter access is created by an administrator after approval.
           </p>
 
           <div className="mt-6 grid gap-4">
@@ -88,9 +87,6 @@ function Register() {
               required
               onChange={handleChange}
             />
-            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
-              Account type: Student
-            </div>
           </div>
 
           {errorMessage && (
