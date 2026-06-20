@@ -1,5 +1,6 @@
 import Project from "../models/Project.js";
 import Portfolio from "../models/Portfolio.js";
+import User from "../models/User.js";
 import Notification from "../models/Notification.js";
 import Badge from "../models/Badge.js";
 import { analyzeProject } from "../utils/analyzeProject.js";
@@ -33,6 +34,37 @@ const normalizeCertificates = (certificates) =>
     }))
     .filter((certificate) => certificate.title || certificate.fileUrl)
     .slice(0, 10);
+
+const toPublicProject = (project, verifiedProjectCounts = new Map()) => {
+  const plainProject = typeof project.toObject === "function" ? project.toObject() : project;
+  const userId = String(plainProject.user?._id || plainProject.user || "");
+
+  return {
+    _id: plainProject._id,
+    title: plainProject.title,
+    description: plainProject.description,
+    skills: plainProject.skills || [],
+    githubLink: plainProject.githubLink || "",
+    liveLink: plainProject.liveLink || "",
+    evidenceType: plainProject.evidenceType,
+    verificationStatus: "verified",
+    createdAt: plainProject.createdAt,
+    updatedAt: plainProject.updatedAt,
+    user: plainProject.user
+      ? {
+          _id: plainProject.user._id,
+          name: plainProject.user.name,
+          profileImage: plainProject.user.profileImage || "",
+        }
+      : null,
+    candidate: {
+      name: plainProject.user?.name || "",
+      skills: plainProject.skills || [],
+      verifiedProjects: verifiedProjectCounts.get(userId) || 1,
+      verificationStatus: "Verified",
+    },
+  };
+};
 
 // CREATE PROJECT
 export const createProject = async (req, res) => {
@@ -151,9 +183,17 @@ export const getPublicProjects = async (req, res) => {
       visibility: "public",
       verificationStatus: "verified",
     })
-      .populate("user", "name email");
+      .populate("user", "name profileImage")
+      .sort({ updatedAt: -1 })
+      .lean();
 
-    res.status(200).json(projects);
+    const verifiedProjectCounts = new Map();
+    projects.forEach((project) => {
+      const userId = String(project.user?._id || "");
+      if (userId) verifiedProjectCounts.set(userId, (verifiedProjectCounts.get(userId) || 0) + 1);
+    });
+
+    res.status(200).json(projects.map((project) => toPublicProject(project, verifiedProjectCounts)));
 
   } catch (error) {
     res.status(500).json({
@@ -169,17 +209,24 @@ export const getVerificationQueue = async (req, res) => {
 
     if (status !== "all") query.verificationStatus = status;
     if (q) query.$text = { $search: q };
+    if (req.user.role !== "admin") {
+      const studentsForVerifier = await User.find({
+        role: "student",
+        assignedVerifier: req.user._id,
+      }).distinct("_id");
+      query.user = { $in: studentsForVerifier };
+    }
 
     const projects = await Project.find(query)
-      .populate("user", "name email")
-      .populate("reviewedBy", "name email")
+      .populate("user", "name profileImage assignedVerifier")
+      .populate("reviewedBy", "name")
       .lean()
       .sort({ createdAt: 1 });
 
     const portfolios = await Portfolio.find({
       studentId: { $in: projects.map((project) => project.user?._id).filter(Boolean) },
     })
-      .populate("studentId", "name email profileImage")
+      .populate("studentId", "name profileImage assignedVerifier")
       .lean();
 
     const portfolioMap = new Map(
@@ -305,18 +352,24 @@ export const getReviewerAnalytics = async (req, res) => {
 
 export const getProjectAnalytics = async (req, res) => {
   try {
+    const baseFilter =
+      req.user.role === "recruiter"
+        ? { visibility: "public", verificationStatus: "verified" }
+        : {};
+
     const [total, pending, verified, rejected, inReview] = await Promise.all([
-      Project.countDocuments(),
-      Project.countDocuments({ verificationStatus: "pending" }),
-      Project.countDocuments({ verificationStatus: "verified" }),
-      Project.countDocuments({ verificationStatus: "rejected" }),
-      Project.countDocuments({ verificationStatus: "in_review" }),
+      Project.countDocuments(baseFilter),
+      req.user.role === "recruiter" ? 0 : Project.countDocuments({ verificationStatus: "pending" }),
+      Project.countDocuments({ ...baseFilter, verificationStatus: "verified" }),
+      req.user.role === "recruiter" ? 0 : Project.countDocuments({ verificationStatus: "rejected" }),
+      req.user.role === "recruiter" ? 0 : Project.countDocuments({ verificationStatus: "in_review" }),
     ]);
 
-    const recent = await Project.find()
-      .populate("user", "name email")
+    const recent = await Project.find(baseFilter)
+      .populate("user", req.user.role === "recruiter" ? "name profileImage" : "name email")
       .sort({ updatedAt: -1 })
-      .limit(8);
+      .limit(8)
+      .lean();
 
     res.status(200).json({
       total,
@@ -325,7 +378,7 @@ export const getProjectAnalytics = async (req, res) => {
       rejected,
       inReview,
       verificationRate: total ? Math.round((verified / total) * 100) : 0,
-      recent,
+      recent: req.user.role === "recruiter" ? recent.map((project) => toPublicProject(project)) : recent,
     });
   } catch (error) {
     res.status(500).json({

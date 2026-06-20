@@ -37,6 +37,14 @@ const userSchema = new mongoose.Schema(
       ],
       default: "student",
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    assignedVerifier: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     status: {
       type: String,
       enum: ["active", "suspended"],

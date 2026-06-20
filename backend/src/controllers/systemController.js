@@ -9,7 +9,7 @@ import User from "../models/User.js";
 import { analyzeProject } from "../utils/analyzeProject.js";
 import { createAuditEvent } from "../utils/audit.js";
 
-const allowedRoles = new Set(["student", "verifier", "reviewer", "recruiter", "admin", "administrator"]);
+const allowedRoles = new Set(["student", "verifier", "recruiter", "admin", "administrator"]);
 const allowedStatuses = new Set(["active", "suspended"]);
 const criticalAuditActions = new Set([
   "user.login",
@@ -190,6 +190,7 @@ export const createAdminUser = async (req, res) => {
       password: hashedPassword,
       role: normalizedRole,
       status: "active",
+      createdBy: req.user._id,
     });
 
     await createAuditEvent({
@@ -217,7 +218,7 @@ export const createAdminUser = async (req, res) => {
 
 export const updateUserRole = async (req, res) => {
   try {
-    const { role, status } = req.body;
+    const { role, status, assignedVerifier } = req.body;
     const updates = {};
 
     if (role) {
@@ -234,6 +235,24 @@ export const updateUserRole = async (req, res) => {
       }
 
       updates.status = status;
+    }
+
+    if (assignedVerifier !== undefined) {
+      if (!assignedVerifier) {
+        updates.$unset = { assignedVerifier: "" };
+      } else {
+        const verifier = await User.findOne({
+          _id: assignedVerifier,
+          role: { $in: ["verifier", "reviewer"] },
+          status: "active",
+        });
+
+        if (!verifier) {
+          return res.status(400).json({ message: "Assigned verifier must be an active verifier account" });
+        }
+
+        updates.assignedVerifier = verifier._id;
+      }
     }
 
     if (!Object.keys(updates).length) {

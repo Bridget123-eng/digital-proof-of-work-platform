@@ -165,6 +165,7 @@ function Dashboard() {
               {
                 role: normalizeRole(entry.role),
                 status: entry.status || "active",
+                assignedVerifier: entry.assignedVerifier?._id || entry.assignedVerifier || "",
               },
             ])
           );
@@ -290,6 +291,9 @@ function Dashboard() {
 
   const actions = roleActions[role] || roleActions.student;
   const quickStats = quickStatsByRole[role] || quickStatsByRole.student;
+  const activeVerifiers = dashboardData.users.filter(
+    (entry) => ["verifier", "reviewer"].includes(normalizeRole(entry.role)) && (entry.status || "active") === "active"
+  );
 
   const refreshAdminSlices = async () => {
     if (role !== "admin") return;
@@ -314,6 +318,7 @@ function Dashboard() {
           {
             role: normalizeRole(entry.role),
             status: entry.status || "active",
+            assignedVerifier: entry.assignedVerifier?._id || entry.assignedVerifier || "",
           },
         ])
       )
@@ -1094,7 +1099,7 @@ function Dashboard() {
                 </section>
               )}
 
-              {role === "admin" && (
+              {role === "admin-inline-disabled" && (
                 <>
                   <section id="users" className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
                     <form onSubmit={createAdminUser} className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
@@ -1120,7 +1125,6 @@ function Dashboard() {
                         >
                           <option value="student">student</option>
                           <option value="verifier">verifier</option>
-                          <option value="reviewer">reviewer</option>
                           <option value="recruiter">recruiter</option>
                           <option value="admin">admin</option>
                         </select>
@@ -1146,7 +1150,7 @@ function Dashboard() {
                       <div className="mt-4 grid gap-3">
                         {dashboardData.users.map((entry) => (
                           <article key={entry._id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.7fr_0.7fr_auto_auto]">
+                            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.7fr_0.7fr_0.8fr_auto_auto]">
                               <div>
                                 <p className="text-lg font-semibold text-white">{entry.name}</p>
                                 <p className="text-sm text-slate-300">{entry.email}</p>
@@ -1168,7 +1172,6 @@ function Dashboard() {
                                 >
                                   <option value="student">student</option>
                                   <option value="verifier">verifier</option>
-                                  <option value="reviewer">reviewer</option>
                                   <option value="recruiter">recruiter</option>
                                   <option value="admin">admin</option>
                                 </select>
@@ -1192,6 +1195,33 @@ function Dashboard() {
                                   <option value="suspended">suspended</option>
                                 </select>
                               </label>
+                              {normalizeRole(entry.role) === "student" ? (
+                                <label className="grid gap-1 text-sm text-slate-300">
+                                  <span>Verifier</span>
+                                  <select
+                                    value={rowEdits[entry._id]?.assignedVerifier || ""}
+                                    onChange={(event) =>
+                                      setRowEdits((current) => ({
+                                        ...current,
+                                        [entry._id]: {
+                                          ...current[entry._id],
+                                          assignedVerifier: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    className="rounded-xl border border-slate-600 bg-slate-950 px-3 py-2 text-white"
+                                  >
+                                    <option value="">Unassigned</option>
+                                    {activeVerifiers.map((verifier) => (
+                                      <option key={verifier._id} value={verifier._id}>
+                                        {verifier.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              ) : (
+                                <div className="hidden lg:block" />
+                              )}
                               <button
                                 type="button"
                                 onClick={() => saveUserUpdate(entry._id)}

@@ -139,7 +139,11 @@ function WorkspaceDetail() {
         Object.fromEntries(
           (nextData.users || []).map((entry) => [
             entry._id,
-            { role: normalizeRole(entry.role), status: entry.status || "active" },
+            {
+              role: normalizeRole(entry.role),
+              status: entry.status || "active",
+              assignedVerifier: entry.assignedVerifier?._id || entry.assignedVerifier || "",
+            },
           ])
         )
       );
@@ -157,6 +161,7 @@ function WorkspaceDetail() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadWorkspace();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, view]);
@@ -423,7 +428,6 @@ function WorkspaceDetail() {
           <select value={createUserForm.role} onChange={(event) => setCreateUserForm((current) => ({ ...current, role: event.target.value }))} className="rounded border border-slate-300 px-3 py-2">
             <option value="student">student</option>
             <option value="verifier">verifier</option>
-            <option value="reviewer">reviewer</option>
             <option value="recruiter">recruiter</option>
             <option value="admin">admin</option>
           </select>
@@ -435,7 +439,7 @@ function WorkspaceDetail() {
       <div className="grid gap-3">
         {data.users.map((entry) => (
           <article key={entry._id} className="rounded-lg border border-slate-200 bg-white p-5">
-            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.7fr_0.7fr_auto_auto]">
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.7fr_0.7fr_0.8fr_auto_auto]">
               <div>
                 <p className="font-semibold text-slate-950">{entry.name}</p>
                 <p className="mt-1 text-sm text-slate-600">{entry.email}</p>
@@ -445,7 +449,6 @@ function WorkspaceDetail() {
                 <select value={rowEdits[entry._id]?.role || normalizeRole(entry.role)} onChange={(event) => setRowEdits((current) => ({ ...current, [entry._id]: { ...current[entry._id], role: event.target.value } }))} className="rounded border border-slate-300 px-3 py-2">
                   <option value="student">student</option>
                   <option value="verifier">verifier</option>
-                  <option value="reviewer">reviewer</option>
                   <option value="recruiter">recruiter</option>
                   <option value="admin">admin</option>
                 </select>
@@ -457,6 +460,21 @@ function WorkspaceDetail() {
                   <option value="suspended">suspended</option>
                 </select>
               </label>
+              {normalizeRole(entry.role) === "student" ? (
+                <label className="grid gap-1 text-sm text-slate-600">
+                  <span>Verifier</span>
+                  <select value={rowEdits[entry._id]?.assignedVerifier || ""} onChange={(event) => setRowEdits((current) => ({ ...current, [entry._id]: { ...current[entry._id], assignedVerifier: event.target.value } }))} className="rounded border border-slate-300 px-3 py-2">
+                    <option value="">Unassigned</option>
+                    {data.users
+                      .filter((userEntry) => ["verifier", "reviewer"].includes(normalizeRole(userEntry.role)) && (userEntry.status || "active") === "active")
+                      .map((verifier) => (
+                        <option key={verifier._id} value={verifier._id}>{verifier.name}</option>
+                      ))}
+                  </select>
+                </label>
+              ) : (
+                <div className="hidden lg:block" />
+              )}
               <button type="button" onClick={() => saveUserUpdate(entry._id)} disabled={busyKey === `user-${entry._id}`} className="self-end rounded bg-sky-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">Save</button>
               <button type="button" onClick={() => resetUserAccount(entry._id)} disabled={busyKey === `reset-${entry._id}`} className="self-end rounded border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 disabled:opacity-60">Reset</button>
             </div>

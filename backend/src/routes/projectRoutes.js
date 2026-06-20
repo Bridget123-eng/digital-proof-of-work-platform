@@ -14,7 +14,7 @@ import {
 
 const router = express.Router();
 
-router.post("/", protect, authorize("student", "admin"), createProject);
+router.post("/", protect, authorize("student"), createProject);
 
 router.get("/my-projects", protect, getUserProjects);
 

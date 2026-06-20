@@ -9,7 +9,6 @@ function Register() {
     name: "",
     email: "",
     password: "",
-    role: "student",
   });
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,7 +26,7 @@ function Register() {
     setIsSubmitting(true);
 
     try {
-      await API.post("/auth/register", formData);
+      await API.post("/auth/register", { ...formData, role: "student" });
       navigate("/login", {
         state: {
           message: "Account created. Login with your new credentials.",
@@ -55,7 +54,7 @@ function Register() {
           </p>
           <h2 className="mt-2 text-3xl font-bold">Create Account</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Use your real role so the dashboard shows the right workflow.
+            Public registration is for students only. Verifier and recruiter access is created by an administrator after approval.
           </p>
 
           <div className="mt-6 grid gap-4">
@@ -89,17 +88,9 @@ function Register() {
               required
               onChange={handleChange}
             />
-
-            <select
-              name="role"
-              className="w-full rounded-md border border-slate-300 p-3 outline-none focus:border-emerald-500"
-              value={formData.role}
-              onChange={handleChange}
-            >
-              <option value="student">Student</option>
-              <option value="recruiter">Recruiter</option>
-              <option value="reviewer">Reviewer</option>
-            </select>
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
+              Account type: Student
+            </div>
           </div>
 
           {errorMessage && (

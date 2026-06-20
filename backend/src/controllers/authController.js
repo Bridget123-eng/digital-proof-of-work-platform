@@ -12,12 +12,11 @@ const roleAliases = {
 const allowedRoles = [
   "student",
   "verifier",
-  "reviewer",
   "recruiter",
   "admin",
   "administrator",
 ];
-const selfSignupRoles = new Set(["student", "verifier", "reviewer", "recruiter"]);
+const selfSignupRoles = new Set(["student"]);
 
 const normalizeRole = (role = "student") => roleAliases[role] || role;
 const cleanEmail = (email) => String(email || "").trim().toLowerCase();
@@ -98,7 +97,7 @@ export const registerUser = async (req, res) => {
 
     if (!isBootstrapAdmin && !selfSignupRoles.has(normalizedRole)) {
       return res.status(403).json({
-        message: "That role must be assigned by an administrator",
+        message: "Public registration is limited to student accounts. Verifier and recruiter accounts must be created by an administrator.",
       });
     }
 
@@ -110,7 +109,7 @@ export const registerUser = async (req, res) => {
       email: normalizedEmail,
       username: normalizedEmail,
       password: hashedPassword,
-      role: isBootstrapAdmin ? "admin" : normalizedRole,
+      role: isBootstrapAdmin ? "admin" : "student",
     });
 
     await createAuditEvent({

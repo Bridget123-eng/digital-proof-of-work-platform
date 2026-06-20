@@ -30,6 +30,20 @@ const normalizeCertificates = (certificates) =>
     .filter((certificate) => certificate.title || certificate.fileUrl)
     .slice(0, 15);
 
+const toPublicProject = (project) => ({
+  _id: project._id,
+  title: project.title,
+  description: project.description,
+  skills: project.skills || [],
+  githubLink: project.githubLink || "",
+  liveLink: project.liveLink || "",
+  evidenceType: project.evidenceType,
+  verificationStatus: "verified",
+  createdAt: project.createdAt,
+  updatedAt: project.updatedAt,
+  analysis: project.analysis ? { score: project.analysis.score || 0 } : undefined,
+});
+
 
 // CREATE PORTFOLIO
 export const createPortfolio = async (req, res) => {
@@ -194,7 +208,7 @@ export const getPublicPortfolio = async (req, res) => {
     const portfolio = await Portfolio.findOne(
       portfolioQuery
     )
-      .populate("studentId", "name email profileImage")
+      .populate("studentId", "name profileImage")
       .populate("projects");
 
     if (!portfolio) {
@@ -215,13 +229,19 @@ export const getPublicPortfolio = async (req, res) => {
 
     res.status(200).json({
       _id: portfolio._id,
-      student: portfolio.studentId,
+      student: {
+        _id: portfolio.studentId._id,
+        name: portfolio.studentId.name,
+        profileImage: portfolio.studentId.profileImage || "",
+      },
       bio: portfolio.bio,
       skills: portfolio.skills,
       githubLink: portfolio.githubLink,
       certificates: portfolio.certificates,
-      projects: publicProjects,
+      projects: publicProjects.map(toPublicProject),
       badges,
+      verifiedProjects: publicProjects.length,
+      verificationStatus: publicProjects.length ? "Verified" : "Pending",
       updatedAt: portfolio.updatedAt,
     });
 
