@@ -5,6 +5,7 @@ import projectRoutes from "./routes/projectRoutes.js";
 import portfolioRoutes from "./routes/portfolioRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import systemRoutes from "./routes/systemRoutes.js";
+import { emailServiceStatus } from "./config/smtp.js";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use((req, res, next) => {
 const allowedOrigins = new Set(
   [
     process.env.APP_ORIGIN,
+    process.env.FRONTEND_URL,
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:5174",
@@ -60,7 +62,11 @@ app.get("/api/health", (req, res) => {
   const dbReadyState = mongoose.connection.readyState;
   const isDbConnected = dbReadyState === 1;
 
-  res.status(isDbConnected ? 200 : 503).json({
+  res.status(200).json({
+    success: true,
+    message: "Backend is running",
+    environment: process.env.NODE_ENV || "development",
+    emailService: emailServiceStatus,
     status: isDbConnected ? "ok" : "degraded",
     service: "digital-proof-of-work-platform-backend",
     timestamp: new Date().toISOString(),

@@ -3,7 +3,7 @@ import crypto from "crypto";
 import User from "../models/User.js";
 import generateToken from "../utils/generateToken.js";
 import { createAuditEvent } from "../utils/audit.js";
-import { sendEmail } from "../utils/sendEmail.js";
+import { EMAIL_NOT_CONFIGURED_MESSAGE, EmailServiceError, sendEmail } from "../utils/sendEmail.js";
 
 const roleAliases = {
   administrator: "admin",
@@ -29,6 +29,10 @@ const escapeHtml = (value) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 const createResetCode = () => String(crypto.randomInt(100000, 1000000));
+const getOtpExpiryMinutes = () => {
+  const minutes = Number(process.env.OTP_EXPIRES_IN_MINUTES || 10);
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : 10;
+};
 const hashResetCode = (email, code) =>
   crypto.createHash("sha256").update(`${cleanEmail(email)}:${String(code || "").trim()}`).digest("hex");
 const findUserByValidResetCode = (email, code) =>
@@ -219,7 +223,7 @@ export const requestPasswordReset = async (req, res) => {
     const hashedResetCode = hashResetCode(normalizedEmail, resetCode);
 
     user.passwordResetToken = hashedResetCode;
-    user.passwordResetExpires = new Date(Date.now() + 1000 * 60 * 10);
+    user.passwordResetExpires = new Date(Date.now() + 1000 * 60 * getOtpExpiryMinutes());
     await user.save();
 
     try {
@@ -240,11 +244,9 @@ export const requestPasswordReset = async (req, res) => {
     } catch (emailError) {
       console.error(`Password reset email failed: ${emailError.message}`);
 
-      if (isProduction()) {
-        return res.status(503).json({
-          message: "Password reset email could not be sent. Please contact support.",
-        });
-      }
+      user.passwordResetToken = "";
+      user.passwordResetExpires = undefined;
+      await user.save();
 
       await createAuditEvent({
         actor: user._id,
@@ -254,7 +256,22 @@ export const requestPasswordReset = async (req, res) => {
         metadata: { owner: String(user._id), emailDelivery: "failed" },
       });
 
+      if (emailError instanceof EmailServiceError && emailError.message === EMAIL_NOT_CONFIGURED_MESSAGE) {
+        return res.status(503).json({
+          success: false,
+          message: "Email service is not configured. OTP cannot be sent.",
+        });
+      }
+
+      if (isProduction()) {
+        return res.status(503).json({
+          success: false,
+          message: "Email service is not configured. Please contact admin.",
+        });
+      }
+
       return res.status(503).json({
+        success: false,
         message: "Unable to send reset code. Please check email configuration and try again.",
       });
     }
