@@ -22,14 +22,6 @@ npm install
 npm run dev
 ```
 
-5.Register an admin account, sign in, open the dashboard, and click `Seed demo data`.
-
-Demo accounts created by seeding all use `Password123!`:
-
-- `student@dpow.demo`
-- `verifier@dpow.demo`
-- `recruiter@dpow.demo`
-- `admin@dpow.demo`
 
 ## Deploy notes
 
