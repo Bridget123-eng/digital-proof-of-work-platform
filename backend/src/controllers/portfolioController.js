@@ -1,6 +1,6 @@
 import Portfolio from "../models/Portfolio.js";
 import Badge from "../models/Badge.js";
-import User from "../models/User.js";
+import User from "../models/user.js";
 import { createAuditEvent } from "../utils/audit.js";
 
 const normalizeText = (value, maxLength = 4000) =>
