@@ -5,7 +5,7 @@ import Notification from "../models/Notification.js";
 import Portfolio from "../models/Portfolio.js";
 import Project from "../models/Project.js";
 import SystemConfig from "../models/SystemConfig.js";
-import User from "../models/User.js";
+import User from "../models/user.js";
 import { analyzeProject } from "../utils/analyzeProject.js";
 import { createAuditEvent } from "../utils/audit.js";
 

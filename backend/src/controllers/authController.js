@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import User from "../models/User.js";
+import User from "../models/user.js";
 import generateToken from "../utils/generateToken.js";
 import { createAuditEvent } from "../utils/audit.js";
 import { EMAIL_NOT_CONFIGURED_MESSAGE, EmailServiceError, sendEmail } from "../utils/sendEmail.js";

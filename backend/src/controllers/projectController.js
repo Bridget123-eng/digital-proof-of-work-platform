@@ -1,6 +1,6 @@
 import Project from "../models/Project.js";
 import Portfolio from "../models/Portfolio.js";
-import User from "../models/User.js";
+import User from "../models/user.js";
 import Notification from "../models/Notification.js";
 import Badge from "../models/Badge.js";
 import { analyzeProject } from "../utils/analyzeProject.js";
