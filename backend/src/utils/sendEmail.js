@@ -1,4 +1,4 @@
-import { transporter } from "../config/smtp.js";
+import { smtpFrom, transporter } from "../config/smtp.js";
 
 export const EMAIL_NOT_CONFIGURED_MESSAGE = "Email service is not configured";
 
@@ -18,7 +18,7 @@ export const sendEmail = async ({ to, subject, text, html }) => {
 
   try {
     await transporter.sendMail({
-      from: process.env.SMTP_FROM,
+      from: smtpFrom,
       to,
       subject,
       text,

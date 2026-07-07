@@ -14,14 +14,13 @@ npm install
 npm run dev
 ```
 
-4.Install and start the frontend:
+5 Install and start the frontend in a second terminal:
 
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-
 
 ## Deploy notes
 
