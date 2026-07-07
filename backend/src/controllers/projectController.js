@@ -5,6 +5,7 @@ import Notification from "../models/Notification.js";
 import Badge from "../models/Badge.js";
 import { analyzeProject } from "../utils/analyzeProject.js";
 import { createAuditEvent } from "../utils/audit.js";
+import { validateProjectPayload } from "../utils/validation.js";
 
 const allowedEvidenceTypes = new Set(["repository", "certificate", "live_demo", "case_study"]);
 const allowedVisibility = new Set(["private", "public"]);
@@ -84,22 +85,44 @@ export const createProject = async (req, res) => {
 
     const normalizedTitle = normalizeText(title, 160);
     const normalizedDescription = normalizeText(description, 4000);
-
-    if (!normalizedTitle || !normalizedDescription) {
-      return res.status(400).json({
-        message: "Project title and description are required",
-      });
-    }
-
     const normalizedEvidenceType = allowedEvidenceTypes.has(evidenceType)
       ? evidenceType
       : "repository";
-
     const normalizedVisibility = allowedVisibility.has(visibility)
       ? visibility
       : "public";
 
     const skillList = normalizeStringList(skills);
+    const proofFileList = normalizeStringList(proofFiles, 10).map((file) => file.slice(0, 500));
+    const certificateList = normalizeCertificates(certificates);
+
+    const existingProject = await Project.findOne({
+      user: req.user._id,
+      title: normalizedTitle,
+    });
+
+    if (existingProject) {
+      return res.status(409).json({
+        message: "A submission with this title already exists for your account.",
+      });
+    }
+
+    const validation = validateProjectPayload({
+      title: normalizedTitle,
+      description: normalizedDescription,
+      skills: skillList,
+      githubLink: normalizeText(githubLink, 500),
+      liveLink: normalizeText(liveLink, 500),
+      proofFiles: proofFileList,
+      certificates: certificateList,
+    });
+
+    if (!validation.valid) {
+      return res.status(400).json({
+        message: "Please correct the submission details.",
+        errors: validation.errors,
+      });
+    }
 
     const analysis = analyzeProject({
       title: normalizedTitle,
@@ -108,9 +131,6 @@ export const createProject = async (req, res) => {
       githubLink: normalizeText(githubLink, 500),
       liveLink: normalizeText(liveLink, 500),
     });
-
-    const proofFileList = normalizeStringList(proofFiles, 10).map((file) => file.slice(0, 500));
-    const certificateList = normalizeCertificates(certificates);
 
     const project = await Project.create({
       user: req.user._id,
@@ -263,6 +283,12 @@ export const reviewProject = async (req, res) => {
     if (!project) {
       return res.status(404).json({
         message: "Project not found",
+      });
+    }
+
+    if (String(project.user) !== String(req.user._id) && !["verifier", "reviewer", "admin"].includes(req.user.role)) {
+      return res.status(403).json({
+        message: "You do not have permission to review this submission",
       });
     }
 

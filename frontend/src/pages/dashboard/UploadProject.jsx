@@ -24,6 +24,7 @@ function UploadProject() {
   });
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [validationErrors, setValidationErrors] = useState([]);
   const [saving, setSaving] = useState(false);
 
   const handleChange = (e) => {
@@ -62,6 +63,7 @@ function UploadProject() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setValidationErrors([]);
     setSaving(true);
 
     try {
@@ -92,6 +94,8 @@ function UploadProject() {
         certificates: [emptyCertificate],
       });
     } catch (requestError) {
+      const serverErrors = requestError.response?.data?.errors || [];
+      setValidationErrors(Array.isArray(serverErrors) ? serverErrors : []);
       setError(requestError.response?.data?.message || "Project upload failed");
     } finally {
       setSaving(false);
@@ -110,6 +114,13 @@ function UploadProject() {
 
         <form onSubmit={handleSubmit} className="grid gap-4 rounded border border-slate-200 bg-white p-6">
           {error && <p className="rounded border border-red-200 bg-red-50 p-3 text-red-700">{error}</p>}
+          {validationErrors.length > 0 && (
+            <ul className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              {validationErrors.map((message) => (
+                <li key={message} className="ml-4 list-disc">{message}</li>
+              ))}
+            </ul>
+          )}
           {result && (
             <div className="rounded border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
               <p className="font-semibold">Submission created and queued for review.</p>
