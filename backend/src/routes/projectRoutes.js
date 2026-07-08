@@ -21,28 +21,28 @@ router.get("/my-projects", protect, getUserProjects);
 router.get(
   "/queue",
   protect,
-  authorize("verifier", "reviewer", "admin"),
+  authorize("verifier", "reviewer", "mentor", "admin"),
   getVerificationQueue
 );
 
 router.get(
   "/analytics",
   protect,
-  authorize("recruiter", "admin"),
+  authorize("recruiter", "mentor", "admin"),
   getProjectAnalytics
 );
 
 router.get(
   "/reviewer-analytics",
   protect,
-  authorize("verifier", "reviewer", "admin"),
+  authorize("verifier", "reviewer", "mentor", "admin"),
   getReviewerAnalytics
 );
 
 router.patch(
   "/:id/review",
   protect,
-  authorize("verifier", "reviewer", "admin"),
+  authorize("verifier", "reviewer", "mentor", "admin"),
   reviewProject
 );
 

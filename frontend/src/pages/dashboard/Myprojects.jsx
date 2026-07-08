@@ -38,6 +38,9 @@ function MyProjects() {
                 <span className="rounded bg-slate-100 px-2 py-1 text-sm">
                   {(project.verificationStatus || "pending").replace("_", " ")}
                 </span>
+                <span className="rounded bg-slate-100 px-2 py-1 text-sm">
+                  {(project.evidenceType || "repository").replace("_", " ")}
+                </span>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded bg-emerald-100 px-2 py-1 text-sm text-emerald-800">
@@ -61,16 +64,23 @@ function MyProjects() {
                   </a>
                 )}
                 {(project.proofFiles || []).map((file, index) => (
-                  <a key={file} className="rounded border border-slate-300 px-3 py-1 text-sm" href={file} target="_blank" rel="noreferrer">
-                    Proof {index + 1}
+                  <a key={index} className="rounded border border-slate-300 px-3 py-1 text-sm" href={typeof file === "string" ? file : file.url} target="_blank" rel="noreferrer">
+                    {typeof file === "string" ? `Proof ${index + 1}` : (file.title || `Proof ${index + 1}`)}
                   </a>
                 ))}
                 {(project.certificates || []).map((certificate) => (
-                  <a key={certificate.fileUrl} className="rounded bg-emerald-50 px-3 py-1 text-sm text-emerald-800" href={certificate.fileUrl} target="_blank" rel="noreferrer">
+                  <a key={certificate.fileUrl || certificate.title} className="rounded bg-emerald-50 px-3 py-1 text-sm text-emerald-800" href={certificate.fileUrl} target="_blank" rel="noreferrer">
                     {certificate.title || "Certificate"}
                   </a>
                 ))}
               </div>
+              {project.githubData && (
+                <div className="mt-4 rounded bg-slate-50 p-3 text-sm border border-slate-200">
+                  <p className="font-bold text-slate-900 mb-1">GitHub Analysis Summary</p>
+                  <p>Primary Language: {project.githubData.metadata?.language || "N/A"}</p>
+                  <p>Repository activity analyzed at {new Date(project.githubData.analyzedAt).toLocaleDateString()}</p>
+                </div>
+              )}
               {project.reviewNote && (
                 <p className="mt-4 rounded bg-slate-50 p-3 text-sm text-slate-700">
                   Reviewer note: {project.reviewNote}

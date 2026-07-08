@@ -37,11 +37,14 @@ const toPublicProject = (project) => ({
   skills: project.skills || [],
   githubLink: project.githubLink || "",
   liveLink: project.liveLink || "",
+  proofFiles: project.proofFiles || [],
+  certificates: project.certificates || [],
+  githubData: project.githubData || null,
+  analysis: project.analysis || null,
   evidenceType: project.evidenceType,
   verificationStatus: "verified",
   createdAt: project.createdAt,
   updatedAt: project.updatedAt,
-  analysis: project.analysis ? { score: project.analysis.score || 0 } : undefined,
 });
 
 
@@ -54,6 +57,7 @@ export const createPortfolio = async (req, res) => {
       skills,
       githubLink,
       profileImage,
+      education = [],
       certificates = [],
     } = req.body;
 
@@ -80,6 +84,7 @@ export const createPortfolio = async (req, res) => {
       bio: normalizedBio,
       skills: normalizedSkills,
       githubLink: normalizedGithubLink,
+      education: education || [],
       certificates: normalizeCertificates(certificates),
     });
 
@@ -157,6 +162,18 @@ export const updatePortfolio = async (req, res) => {
 
     if (Array.isArray(req.body.certificates)) {
       portfolio.certificates = normalizeCertificates(req.body.certificates);
+    }
+
+    if (Array.isArray(req.body.education)) {
+      portfolio.education = req.body.education.map((edu) => ({
+        school: normalizeText(edu.school, 200),
+        degree: normalizeText(edu.degree, 200),
+        fieldOfStudy: normalizeText(edu.fieldOfStudy, 200),
+        from: edu.from ? new Date(edu.from) : null,
+        to: edu.to ? new Date(edu.to) : null,
+        current: !!edu.current,
+        description: normalizeText(edu.description, 1000),
+      }));
     }
 
     const userUpdates = {
@@ -237,6 +254,7 @@ export const getPublicPortfolio = async (req, res) => {
       bio: portfolio.bio,
       skills: portfolio.skills,
       githubLink: portfolio.githubLink,
+      education: portfolio.education || [],
       certificates: portfolio.certificates,
       projects: publicProjects.map(toPublicProject),
       badges,

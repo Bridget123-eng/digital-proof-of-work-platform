@@ -36,6 +36,19 @@ const portfolioSchema = new mongoose.Schema(
       },
     ],
 
+    // Education
+    education: [
+      {
+        school: String,
+        degree: String,
+        fieldOfStudy: String,
+        from: Date,
+        to: Date,
+        current: Boolean,
+        description: String,
+      },
+    ],
+
     // Uploaded certificates
     certificates: [
       {

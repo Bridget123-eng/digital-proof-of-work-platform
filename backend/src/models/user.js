@@ -32,6 +32,7 @@ const userSchema = new mongoose.Schema(
         "verifier",
         "reviewer",
         "recruiter",
+        "mentor",
         "admin",
         "administrator",
       ],

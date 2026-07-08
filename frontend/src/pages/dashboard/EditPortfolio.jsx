@@ -10,6 +10,16 @@ const emptyCertificate = {
   issuedDate: "",
 };
 
+const emptyEducation = {
+  school: "",
+  degree: "",
+  fieldOfStudy: "",
+  from: "",
+  to: "",
+  current: false,
+  description: "",
+};
+
 function AvatarFallback({ name }) {
   const initials = String(name || "Student")
     .split(" ")
@@ -29,13 +39,15 @@ function EditPortfolio() {
   const navigate = useNavigate();
   const { user, setUser } = useContext(AuthContext);
   const role = user?.role === "administrator" ? "admin" : user?.role || "student";
-  const showStudentFields = role === "student";
+  const showStudentFields = ["student", "mentor"].includes(role);
   const [formData, setFormData] = useState({
     bio: "",
     skills: "",
     githubLink: "",
+    degree: "",
     profileImage: "",
     certificates: [emptyCertificate],
+    education: [emptyEducation],
   });
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
@@ -48,8 +60,10 @@ function EditPortfolio() {
           bio: data.bio || "",
           skills: showStudentFields ? (data.skills || []).join(", ") : "",
           githubLink: showStudentFields ? data.githubLink || "" : "",
+          degree: showStudentFields ? data.degree || "" : "",
           profileImage: data.studentId?.profileImage || user?.profileImage || "",
           certificates: showStudentFields && data.certificates?.length ? data.certificates : [emptyCertificate],
+          education: showStudentFields && data.education?.length ? data.education : [emptyEducation],
         });
         setStatus("ready");
       })
@@ -111,6 +125,27 @@ function EditPortfolio() {
     });
   };
 
+  const updateEducation = (index, field, value) => {
+    const education = formData.education.map((edu, currentIndex) =>
+      currentIndex === index ? { ...edu, [field]: value } : edu
+    );
+    setFormData({ ...formData, education });
+  };
+
+  const addEducation = () => {
+    setFormData({
+      ...formData,
+      education: [...formData.education, emptyEducation],
+    });
+  };
+
+  const removeEducation = (index) => {
+    setFormData({
+      ...formData,
+      education: formData.education.filter((_, currentIndex) => currentIndex !== index),
+    });
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage("");
@@ -125,8 +160,10 @@ function EditPortfolio() {
 
       if (showStudentFields) {
         payload.githubLink = formData.githubLink;
+        payload.degree = formData.degree;
         payload.skills = formData.skills.split(",").map((skill) => skill.trim()).filter(Boolean);
         payload.certificates = formData.certificates.filter((certificate) => certificate.title || certificate.fileUrl);
+        payload.education = formData.education.filter((edu) => edu.school || edu.degree);
       }
 
       const { data } = await API.put("/portfolio", payload);
@@ -146,11 +183,13 @@ function EditPortfolio() {
         bio: data.bio || "",
         skills: showStudentFields ? (data.skills || []).join(", ") : "",
         githubLink: showStudentFields ? data.githubLink || "" : "",
+        degree: showStudentFields ? data.degree || "" : "",
         profileImage: data.studentId?.profileImage || formData.profileImage || "",
         certificates: showStudentFields && data.certificates?.length ? data.certificates : [emptyCertificate],
+        education: showStudentFields && data.education?.length ? data.education : [emptyEducation],
       });
       setMessageTone("success");
-      setMessage("Profile updated successfully.");
+      setMessage("Profile updated successfully. New or changed certificates were queued for reviewer verification.");
       setStatus("ready");
     } catch (error) {
       setMessageTone("error");
@@ -228,6 +267,37 @@ function EditPortfolio() {
 
                 <section className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center justify-between">
+                    <h2 className="font-semibold">Education</h2>
+                    <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={addEducation}>
+                      Add education
+                    </button>
+                  </div>
+
+                  {formData.education.map((edu, index) => (
+                    <div key={index} className="grid gap-3 rounded border border-slate-200 bg-white p-4">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <input placeholder="School / University" value={edu.school || ""} className="rounded border p-3" onChange={(event) => updateEducation(index, "school", event.target.value)} />
+                        <input placeholder="Degree" value={edu.degree || ""} className="rounded border p-3" onChange={(event) => updateEducation(index, "degree", event.target.value)} />
+                        <input placeholder="Field of study" value={edu.fieldOfStudy || ""} className="rounded border p-3" onChange={(event) => updateEducation(index, "fieldOfStudy", event.target.value)} />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="date" value={edu.from ? String(edu.from).slice(0, 10) : ""} className="rounded border p-3" onChange={(event) => updateEducation(index, "from", event.target.value)} />
+                          <input type="date" value={edu.to ? String(edu.to).slice(0, 10) : ""} disabled={edu.current} className="rounded border p-3" onChange={(event) => updateEducation(index, "to", event.target.value)} />
+                        </div>
+                      </div>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={!!edu.current} onChange={(event) => updateEducation(index, "current", event.target.checked)} />
+                        <span className="text-sm">I am currently studying here</span>
+                      </label>
+                      <textarea placeholder="Description of your studies, activities, and societies" value={edu.description || ""} rows="2" className="rounded border p-3" onChange={(event) => updateEducation(index, "description", event.target.value)} />
+                      <button type="button" className="rounded border border-red-200 px-3 py-2 text-red-700" onClick={() => removeEducation(index)}>
+                        Remove education
+                      </button>
+                    </div>
+                  ))}
+                </section>
+
+                <section className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between">
                     <h2 className="font-semibold">Certificates</h2>
                     <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={addCertificate}>
                       Add certificate
@@ -236,6 +306,16 @@ function EditPortfolio() {
 
                   {formData.certificates.map((certificate, index) => (
                     <div key={index} className="grid gap-3 rounded border border-slate-200 bg-white p-4 md:grid-cols-2">
+                      {certificate.verificationStatus && (
+                        <div className="md:col-span-2">
+                          <span className="rounded bg-amber-100 px-2 py-1 text-xs font-semibold uppercase text-amber-800">
+                            {String(certificate.verificationStatus).replace("_", " ")}
+                          </span>
+                          {certificate.reviewNote && (
+                            <p className="mt-2 text-sm text-slate-600">Reviewer note: {certificate.reviewNote}</p>
+                          )}
+                        </div>
+                      )}
                       <input placeholder="Certificate title" value={certificate.title || ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "title", event.target.value)} />
                       <input placeholder="Certificate URL" value={certificate.fileUrl || ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "fileUrl", event.target.value)} />
                       <input placeholder="Issued by" value={certificate.issuedBy || ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "issuedBy", event.target.value)} />

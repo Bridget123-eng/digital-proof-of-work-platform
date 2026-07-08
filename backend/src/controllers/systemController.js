@@ -9,7 +9,7 @@ import User from "../models/user.js";
 import { analyzeProject } from "../utils/analyzeProject.js";
 import { createAuditEvent } from "../utils/audit.js";
 
-const allowedRoles = new Set(["student", "verifier", "recruiter", "admin", "administrator"]);
+const allowedRoles = new Set(["student", "verifier", "reviewer", "recruiter", "mentor", "admin", "administrator"]);
 const allowedStatuses = new Set(["active", "suspended"]);
 const criticalAuditActions = new Set([
   "user.login",

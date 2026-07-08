@@ -11,6 +11,7 @@ const viewTitles = {
   "review-workspace": ["Review workspace", "Open evidence, compare proof, and record review decisions."],
   "reviewer-analytics": ["Reviewer analytics", "Track completed reviews, pending work, and approval rate."],
   audit: ["Audit logs", "Inspect review and platform activity."],
+  "audit-logs": ["Audit logs", "Inspect review and platform activity."],
   "audit-trail": ["Audit trail", "Inspect critical platform activity."],
   analytics: ["Reports snapshot", "Check verification analytics and public project health."],
   "analytics-dashboard": ["Analytics dashboard", "Track platform-wide metrics."],
@@ -89,7 +90,7 @@ function WorkspaceDetail() {
 
     const requests = [];
     const needsQueue = ["queue", "review-workspace", "verification-management"].includes(view);
-    const needsAudit = ["audit", "audit-trail"].includes(view);
+    const needsAudit = ["audit", "audit-trail", "audit-logs"].includes(view);
     const needsReviewAnalytics = view === "reviewer-analytics";
     const needsAnalytics = ["analytics", "analytics-dashboard"].includes(view);
     const needsPublicProjects = ["public-projects", "analytics"].includes(view);
@@ -342,9 +343,16 @@ function WorkspaceDetail() {
                     {project.githubLink && <a className="rounded border px-3 py-1 text-sm text-sky-700" href={project.githubLink} target="_blank" rel="noreferrer">GitHub</a>}
                     {project.liveLink && <a className="rounded border px-3 py-1 text-sm text-sky-700" href={project.liveLink} target="_blank" rel="noreferrer">Live demo</a>}
                     {(project.proofFiles || []).map((file, index) => (
-                      <a key={file} className="rounded border px-3 py-1 text-sm text-sky-700" href={file} target="_blank" rel="noreferrer">File {index + 1}</a>
+                      <a key={index} className="rounded border px-3 py-1 text-sm text-sky-700" href={typeof file === "string" ? file : file.url} target="_blank" rel="noreferrer">
+                        {typeof file === "string" ? `File ${index + 1}` : (file.title || `File ${index + 1}`)}
+                      </a>
                     ))}
-                    {!project.githubLink && !project.liveLink && !(project.proofFiles || []).length && (
+                    {(project.certificates || []).map((certificate) => (
+                      <a key={certificate.fileUrl || certificate.title} className="rounded border px-3 py-1 text-sm text-sky-700" href={certificate.fileUrl} target="_blank" rel="noreferrer">
+                        {certificate.title || "Certificate"}
+                      </a>
+                    ))}
+                    {!project.githubLink && !project.liveLink && !(project.proofFiles || []).length && !(project.certificates || []).length && (
                       <span className="text-sm text-slate-500">No links or files attached.</span>
                     )}
                   </div>
@@ -352,6 +360,7 @@ function WorkspaceDetail() {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <p className="font-semibold text-slate-900">Student context</p>
                   <p className="mt-2 text-sm text-slate-700">Skills: {(project.skills || []).join(", ") || "None listed"}</p>
+                  <p className="mt-2 text-sm text-slate-700">Education: {(project.studentPortfolio?.education || []).map(e => `${e.degree} at ${e.school}`).join(", ") || "Not listed."}</p>
                   <p className="mt-2 text-sm text-slate-700">Portfolio bio: {project.studentPortfolio?.bio || "No bio available."}</p>
                   <p className="mt-2 text-sm text-slate-700">GitHub: {project.studentPortfolio?.githubLink || "Not linked."}</p>
                 </div>
@@ -427,7 +436,9 @@ function WorkspaceDetail() {
           <input type="email" value={createUserForm.email} onChange={(event) => setCreateUserForm((current) => ({ ...current, email: event.target.value }))} placeholder="Email address" className="rounded border border-slate-300 px-3 py-2" required />
           <select value={createUserForm.role} onChange={(event) => setCreateUserForm((current) => ({ ...current, role: event.target.value }))} className="rounded border border-slate-300 px-3 py-2">
             <option value="student">student</option>
+            <option value="reviewer">reviewer</option>
             <option value="verifier">verifier</option>
+            <option value="mentor">mentor</option>
             <option value="recruiter">recruiter</option>
             <option value="admin">admin</option>
           </select>
@@ -448,7 +459,9 @@ function WorkspaceDetail() {
                 <span>Role</span>
                 <select value={rowEdits[entry._id]?.role || normalizeRole(entry.role)} onChange={(event) => setRowEdits((current) => ({ ...current, [entry._id]: { ...current[entry._id], role: event.target.value } }))} className="rounded border border-slate-300 px-3 py-2">
                   <option value="student">student</option>
+                  <option value="reviewer">reviewer</option>
                   <option value="verifier">verifier</option>
+                  <option value="mentor">mentor</option>
                   <option value="recruiter">recruiter</option>
                   <option value="admin">admin</option>
                 </select>

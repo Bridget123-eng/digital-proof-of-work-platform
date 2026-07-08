@@ -9,6 +9,7 @@ function Register() {
     name: "",
     email: "",
     password: "",
+    role: "student",
   });
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,7 +27,7 @@ function Register() {
     setIsSubmitting(true);
 
     try {
-      await API.post("/auth/register", { ...formData, role: "student" });
+      await API.post("/auth/register", formData);
       navigate("/login", {
         state: {
           message: "Account created. Login with your new credentials.",
@@ -87,6 +88,16 @@ function Register() {
               required
               onChange={handleChange}
             />
+
+            <select
+              name="role"
+              className="w-full rounded-md border border-slate-300 p-3 outline-none focus:border-emerald-500 bg-white"
+              value={formData.role}
+              onChange={handleChange}
+            >
+              <option value="student">I am a Student</option>
+              <option value="mentor">I am a Mentor</option>
+            </select>
           </div>
 
           {errorMessage && (
