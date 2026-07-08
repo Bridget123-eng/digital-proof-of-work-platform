@@ -34,6 +34,7 @@ function EditPortfolio() {
     bio: "",
     skills: "",
     githubLink: "",
+    degree: "",
     profileImage: "",
     certificates: [emptyCertificate],
   });
@@ -48,6 +49,7 @@ function EditPortfolio() {
           bio: data.bio || "",
           skills: showStudentFields ? (data.skills || []).join(", ") : "",
           githubLink: showStudentFields ? data.githubLink || "" : "",
+          degree: showStudentFields ? data.degree || "" : "",
           profileImage: data.studentId?.profileImage || user?.profileImage || "",
           certificates: showStudentFields && data.certificates?.length ? data.certificates : [emptyCertificate],
         });
@@ -125,6 +127,7 @@ function EditPortfolio() {
 
       if (showStudentFields) {
         payload.githubLink = formData.githubLink;
+        payload.degree = formData.degree;
         payload.skills = formData.skills.split(",").map((skill) => skill.trim()).filter(Boolean);
         payload.certificates = formData.certificates.filter((certificate) => certificate.title || certificate.fileUrl);
       }
@@ -146,11 +149,12 @@ function EditPortfolio() {
         bio: data.bio || "",
         skills: showStudentFields ? (data.skills || []).join(", ") : "",
         githubLink: showStudentFields ? data.githubLink || "" : "",
+        degree: showStudentFields ? data.degree || "" : "",
         profileImage: data.studentId?.profileImage || formData.profileImage || "",
         certificates: showStudentFields && data.certificates?.length ? data.certificates : [emptyCertificate],
       });
       setMessageTone("success");
-      setMessage("Profile updated successfully.");
+      setMessage("Profile updated successfully. New or changed certificates were queued for reviewer verification.");
       setStatus("ready");
     } catch (error) {
       setMessageTone("error");
@@ -226,6 +230,17 @@ function EditPortfolio() {
                   </label>
                 </div>
 
+                <label className="grid gap-1">
+                  <span className="font-medium">Degree</span>
+                  <input
+                    name="degree"
+                    value={formData.degree}
+                    placeholder="B.Tech Computer Science, MBA, Diploma in Data Science"
+                    className="rounded border p-3"
+                    onChange={handleChange}
+                  />
+                </label>
+
                 <section className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center justify-between">
                     <h2 className="font-semibold">Certificates</h2>
@@ -236,6 +251,16 @@ function EditPortfolio() {
 
                   {formData.certificates.map((certificate, index) => (
                     <div key={index} className="grid gap-3 rounded border border-slate-200 bg-white p-4 md:grid-cols-2">
+                      {certificate.verificationStatus && (
+                        <div className="md:col-span-2">
+                          <span className="rounded bg-amber-100 px-2 py-1 text-xs font-semibold uppercase text-amber-800">
+                            {String(certificate.verificationStatus).replace("_", " ")}
+                          </span>
+                          {certificate.reviewNote && (
+                            <p className="mt-2 text-sm text-slate-600">Reviewer note: {certificate.reviewNote}</p>
+                          )}
+                        </div>
+                      )}
                       <input placeholder="Certificate title" value={certificate.title || ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "title", event.target.value)} />
                       <input placeholder="Certificate URL" value={certificate.fileUrl || ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "fileUrl", event.target.value)} />
                       <input placeholder="Issued by" value={certificate.issuedBy || ""} className="rounded border p-3" onChange={(event) => updateCertificate(index, "issuedBy", event.target.value)} />

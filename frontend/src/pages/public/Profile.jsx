@@ -36,6 +36,7 @@ function Profile() {
             <section className="rounded border border-slate-200 bg-white p-6">
               <p className="text-sm font-semibold uppercase text-emerald-700">Public portfolio</p>
               <h1 className="mt-2 text-4xl font-bold">{profile.student?.name}</h1>
+              {profile.degree && <p className="mt-2 text-lg font-semibold text-slate-700">{profile.degree}</p>}
               <p className="mt-3 max-w-3xl text-slate-700">{profile.bio || "No bio provided."}</p>
               {profile.student?.profileImage && (
                 <img
@@ -66,6 +67,18 @@ function Profile() {
                     <h3 className="text-xl font-semibold">{project.title}</h3>
                     <p className="mt-2 text-slate-700">{project.description}</p>
                     <p className="mt-3 text-sm text-emerald-800">Verification score {project.analysis?.score || 0}/100</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {project.githubLink && (
+                        <a className="rounded border border-slate-300 px-3 py-1 text-sm text-sky-700" href={project.githubLink} target="_blank" rel="noreferrer">
+                          Repository
+                        </a>
+                      )}
+                      {project.liveLink && (
+                        <a className="rounded border border-slate-300 px-3 py-1 text-sm text-sky-700" href={project.liveLink} target="_blank" rel="noreferrer">
+                          Live demo
+                        </a>
+                      )}
+                    </div>
                   </article>
                 ))}
                 {projects.length === 0 && <p>No verified public projects yet.</p>}
@@ -97,8 +110,12 @@ function Profile() {
                   >
                     <span className="font-semibold">{certificate.title || "Certificate"}</span>
                     <span className="block text-sm text-slate-500">{certificate.issuedBy}</span>
+                    <span className="mt-2 inline-block rounded bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">
+                      Verified
+                    </span>
                   </a>
                 ))}
+                {certificates.length === 0 && <p>No verified certificates yet.</p>}
               </div>
             </section>
           </div>

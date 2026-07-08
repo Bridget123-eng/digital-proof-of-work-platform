@@ -38,6 +38,9 @@ function MyProjects() {
                 <span className="rounded bg-slate-100 px-2 py-1 text-sm">
                   {(project.verificationStatus || "pending").replace("_", " ")}
                 </span>
+                <span className="rounded bg-slate-100 px-2 py-1 text-sm">
+                  {(project.evidenceType || "repository").replace("_", " ")}
+                </span>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded bg-emerald-100 px-2 py-1 text-sm text-emerald-800">
@@ -66,7 +69,7 @@ function MyProjects() {
                   </a>
                 ))}
                 {(project.certificates || []).map((certificate) => (
-                  <a key={certificate.fileUrl} className="rounded bg-emerald-50 px-3 py-1 text-sm text-emerald-800" href={certificate.fileUrl} target="_blank" rel="noreferrer">
+                  <a key={certificate.fileUrl || certificate.title} className="rounded bg-emerald-50 px-3 py-1 text-sm text-emerald-800" href={certificate.fileUrl} target="_blank" rel="noreferrer">
                     {certificate.title || "Certificate"}
                   </a>
                 ))}

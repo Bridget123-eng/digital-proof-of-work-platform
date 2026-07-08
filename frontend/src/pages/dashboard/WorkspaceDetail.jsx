@@ -344,7 +344,12 @@ function WorkspaceDetail() {
                     {(project.proofFiles || []).map((file, index) => (
                       <a key={file} className="rounded border px-3 py-1 text-sm text-sky-700" href={file} target="_blank" rel="noreferrer">File {index + 1}</a>
                     ))}
-                    {!project.githubLink && !project.liveLink && !(project.proofFiles || []).length && (
+                    {(project.certificates || []).map((certificate) => (
+                      <a key={certificate.fileUrl || certificate.title} className="rounded border px-3 py-1 text-sm text-sky-700" href={certificate.fileUrl} target="_blank" rel="noreferrer">
+                        {certificate.title || "Certificate"}
+                      </a>
+                    ))}
+                    {!project.githubLink && !project.liveLink && !(project.proofFiles || []).length && !(project.certificates || []).length && (
                       <span className="text-sm text-slate-500">No links or files attached.</span>
                     )}
                   </div>
@@ -352,6 +357,7 @@ function WorkspaceDetail() {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <p className="font-semibold text-slate-900">Student context</p>
                   <p className="mt-2 text-sm text-slate-700">Skills: {(project.skills || []).join(", ") || "None listed"}</p>
+                  <p className="mt-2 text-sm text-slate-700">Degree: {project.studentPortfolio?.degree || "Not listed."}</p>
                   <p className="mt-2 text-sm text-slate-700">Portfolio bio: {project.studentPortfolio?.bio || "No bio available."}</p>
                   <p className="mt-2 text-sm text-slate-700">GitHub: {project.studentPortfolio?.githubLink || "Not linked."}</p>
                 </div>
