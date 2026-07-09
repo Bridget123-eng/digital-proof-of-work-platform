@@ -19,7 +19,9 @@ function UploadProject() {
     liveLink: "",
     evidenceType: "repository",
     visibility: "public",
-    proofFiles: "",
+    proofFiles: [
+      { url: "", type: "link", title: "" }
+    ],
     certificates: [emptyCertificate],
   });
   const [result, setResult] = useState(null);
@@ -32,6 +34,31 @@ function UploadProject() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const updateProofFile = (index, field, value) => {
+    setFormData((current) => ({
+      ...current,
+      proofFiles: current.proofFiles.map((file, currentIndex) =>
+        currentIndex === index ? { ...file, [field]: value } : file
+      ),
+    }));
+  };
+
+  const addProofFile = () => {
+    setFormData((current) => ({
+      ...current,
+      proofFiles: [...current.proofFiles, { url: "", type: "link", title: "" }],
+    }));
+  };
+
+  const removeProofFile = (index) => {
+    setFormData((current) => ({
+      ...current,
+      proofFiles: current.proofFiles.length === 1 
+        ? [{ url: "", type: "link", title: "" }]
+        : current.proofFiles.filter((_, currentIndex) => currentIndex !== index),
+    }));
   };
 
   const updateCertificate = (index, field, value) => {
@@ -70,7 +97,7 @@ function UploadProject() {
       const { data } = await API.post("/projects", {
         ...formData,
         skills: formData.skills.split(",").map((skill) => skill.trim()).filter(Boolean),
-        proofFiles: formData.proofFiles.split(",").map((file) => file.trim()).filter(Boolean),
+        proofFiles: formData.proofFiles.filter(f => f.url),
         certificates: formData.certificates
           .filter((certificate) => certificate.title || certificate.fileUrl)
           .map((certificate) => ({
@@ -90,7 +117,7 @@ function UploadProject() {
         liveLink: "",
         evidenceType: "repository",
         visibility: "public",
-        proofFiles: "",
+        proofFiles: [{ url: "", type: "link", title: "" }],
         certificates: [emptyCertificate],
       });
     } catch (requestError) {
@@ -154,17 +181,29 @@ function UploadProject() {
             </label>
           </div>
 
-          <label className="grid gap-1">
-            <span className="font-medium">Proof links</span>
-            <input
-              name="proofFiles"
-              value={formData.proofFiles}
-              placeholder="Certificate PDF URL, demo recording URL, document URL"
-              className="rounded border p-3"
-              onChange={handleChange}
-            />
-            <span className="text-sm text-slate-500">Add multiple URLs separated by commas.</span>
-          </label>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold">Evidence files & links</h2>
+              <button type="button" onClick={addProofFile} className="rounded-full border border-slate-300 px-3 py-1 text-sm font-semibold">+ Add evidence</button>
+            </div>
+            <div className="grid gap-3">
+              {formData.proofFiles.map((file, index) => (
+                <div key={index} className="grid gap-3 rounded border border-slate-200 bg-white p-4 md:grid-cols-3">
+                  <input placeholder="Evidence URL" value={file.url} className="rounded border p-3 md:col-span-1" onChange={(e) => updateProofFile(index, "url", e.target.value)} />
+                  <input placeholder="Label (e.g. Video Demo)" value={file.title} className="rounded border p-3 md:col-span-1" onChange={(e) => updateProofFile(index, "title", e.target.value)} />
+                  <div className="flex gap-2 md:col-span-1">
+                    <select value={file.type} className="flex-1 rounded border p-3" onChange={(e) => updateProofFile(index, "type", e.target.value)}>
+                      <option value="link">Link</option>
+                      <option value="image">Image</option>
+                      <option value="video">Video</option>
+                      <option value="document">Document</option>
+                    </select>
+                    <button type="button" onClick={() => removeProofFile(index)} className="rounded border border-red-100 px-3 text-red-600">×</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div className="rounded border border-slate-200 bg-slate-50 p-4">
             <div className="flex items-center justify-between gap-3">

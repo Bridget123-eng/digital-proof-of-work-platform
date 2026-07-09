@@ -1,6 +1,7 @@
 import Portfolio from "../models/Portfolio.js";
 import Badge from "../models/Badge.js";
 import User from "../models/user.js";
+import Project from "../models/Project.js";
 import { createAuditEvent } from "../utils/audit.js";
 
 const normalizeText = (value, maxLength = 4000) =>
@@ -26,6 +27,9 @@ const normalizeCertificates = (certificates) =>
       fileUrl: normalizeText(certificate?.fileUrl, 500),
       issuedBy: normalizeText(certificate?.issuedBy, 120),
       issuedDate: certificate?.issuedDate || undefined,
+      verificationStatus: certificate?.verificationStatus || "pending",
+      reviewNote: normalizeText(certificate?.reviewNote, 1000),
+      reviewedAt: certificate?.reviewedAt,
     }))
     .filter((certificate) => certificate.title || certificate.fileUrl)
     .slice(0, 15);
@@ -37,12 +41,86 @@ const toPublicProject = (project) => ({
   skills: project.skills || [],
   githubLink: project.githubLink || "",
   liveLink: project.liveLink || "",
+  proofFiles: project.proofFiles || [],
+  certificates: project.certificates || [],
+  githubData: project.githubData || null,
+  analysis: project.analysis || null,
   evidenceType: project.evidenceType,
   verificationStatus: "verified",
+  certificates: project.certificates || [],
   createdAt: project.createdAt,
   updatedAt: project.updatedAt,
-  analysis: project.analysis ? { score: project.analysis.score || 0 } : undefined,
 });
+
+const certificateKey = (certificate) =>
+  `${normalizeText(certificate?.title, 120).toLowerCase()}::${normalizeText(certificate?.fileUrl, 500).toLowerCase()}`;
+
+const hasCertificateChanged = (nextCertificate, existingCertificate) =>
+  normalizeText(nextCertificate?.title, 120) !== normalizeText(existingCertificate?.title, 120) ||
+  normalizeText(nextCertificate?.fileUrl, 500) !== normalizeText(existingCertificate?.fileUrl, 500) ||
+  normalizeText(nextCertificate?.issuedBy, 120) !== normalizeText(existingCertificate?.issuedBy, 120) ||
+  String(nextCertificate?.issuedDate || "").slice(0, 10) !== String(existingCertificate?.issuedDate || "").slice(0, 10);
+
+const queueCertificateReviews = async ({ userId, certificates, existingCertificates }) => {
+  const existingMap = new Map(existingCertificates.map((certificate) => [certificateKey(certificate), certificate]));
+  const createdSubmissions = [];
+
+  for (const certificate of certificates) {
+    const existingCertificate = existingMap.get(certificateKey(certificate));
+    const needsReview =
+      !existingCertificate ||
+      hasCertificateChanged(certificate, existingCertificate) ||
+      !["pending", "in_review", "verified"].includes(existingCertificate.verificationStatus || "pending");
+
+    if (!needsReview) {
+      certificate.verificationStatus = existingCertificate.verificationStatus || "pending";
+      certificate.reviewNote = existingCertificate.reviewNote || "";
+      certificate.reviewedAt = existingCertificate.reviewedAt;
+      continue;
+    }
+
+    certificate.verificationStatus = "pending";
+    certificate.reviewNote = "";
+    certificate.reviewedAt = undefined;
+
+    const title = `Certificate: ${certificate.title || certificate.issuedBy || "Student credential"}`;
+    const alreadyQueued = await Project.findOne({
+      user: userId,
+      evidenceType: "certificate",
+      "certificates.fileUrl": certificate.fileUrl,
+      verificationStatus: { $in: ["pending", "in_review", "verified"] },
+    });
+
+    if (alreadyQueued) {
+      continue;
+    }
+
+    const project = await Project.create({
+      user: userId,
+      title,
+      description: [
+        certificate.title ? `Certificate: ${certificate.title}` : "",
+        certificate.issuedBy ? `Issued by ${certificate.issuedBy}` : "",
+        certificate.issuedDate ? `Issued on ${String(certificate.issuedDate).slice(0, 10)}` : "",
+      ]
+        .filter(Boolean)
+        .join(". "),
+      skills: [],
+      proofFiles: certificate.fileUrl ? [certificate.fileUrl] : [],
+      certificates: [certificate],
+      evidenceType: "certificate",
+      visibility: "public",
+      analysis: {
+        score: 0,
+        summary: "Certificate submitted from the student profile and queued for human verification.",
+      },
+    });
+
+    createdSubmissions.push(project);
+  }
+
+  return createdSubmissions;
+};
 
 
 // CREATE PORTFOLIO
@@ -53,7 +131,9 @@ export const createPortfolio = async (req, res) => {
       bio,
       skills,
       githubLink,
+      degree,
       profileImage,
+      education = [],
       certificates = [],
     } = req.body;
 
@@ -73,14 +153,27 @@ export const createPortfolio = async (req, res) => {
     const normalizedBio = normalizeText(bio, 2000);
     const normalizedSkills = normalizeSkills(skills);
     const normalizedGithubLink = normalizeText(githubLink, 500);
+    const normalizedDegree = normalizeText(degree, 180);
     const normalizedProfileImage = profileImage ? normalizeProfileImage(profileImage) : "";
+    const normalizedCertificates = normalizeCertificates(certificates);
+    await queueCertificateReviews({
+      userId: req.user._id,
+      certificates: normalizedCertificates,
+      existingCertificates: [],
+    });
 
     const portfolio = await Portfolio.create({
       studentId: req.user._id,
       bio: normalizedBio,
       skills: normalizedSkills,
       githubLink: normalizedGithubLink,
+<<<<<<< HEAD
+      education: education || [],
       certificates: normalizeCertificates(certificates),
+=======
+      degree: normalizedDegree,
+      certificates: normalizedCertificates,
+>>>>>>> 368968e66cf7d6dcbb335f03665c323669d1a628
     });
 
     await User.findByIdAndUpdate(req.user._id, {
@@ -150,13 +243,34 @@ export const updatePortfolio = async (req, res) => {
     const nextSkills = req.body.skills !== undefined ? normalizeSkills(req.body.skills) : portfolio.skills;
     const nextGithubLink =
       req.body.githubLink !== undefined ? normalizeText(req.body.githubLink, 500) : portfolio.githubLink;
+    const nextDegree = req.body.degree !== undefined ? normalizeText(req.body.degree, 180) : portfolio.degree;
 
     portfolio.bio = nextBio;
     portfolio.skills = nextSkills;
     portfolio.githubLink = nextGithubLink;
+    portfolio.degree = nextDegree;
 
+    let queuedCertificates = [];
     if (Array.isArray(req.body.certificates)) {
-      portfolio.certificates = normalizeCertificates(req.body.certificates);
+      const normalizedCertificates = normalizeCertificates(req.body.certificates);
+      queuedCertificates = await queueCertificateReviews({
+        userId: req.user._id,
+        certificates: normalizedCertificates,
+        existingCertificates: portfolio.certificates || [],
+      });
+      portfolio.certificates = normalizedCertificates;
+    }
+
+    if (Array.isArray(req.body.education)) {
+      portfolio.education = req.body.education.map((edu) => ({
+        school: normalizeText(edu.school, 200),
+        degree: normalizeText(edu.degree, 200),
+        fieldOfStudy: normalizeText(edu.fieldOfStudy, 200),
+        from: edu.from ? new Date(edu.from) : null,
+        to: edu.to ? new Date(edu.to) : null,
+        current: !!edu.current,
+        description: normalizeText(edu.description, 1000),
+      }));
     }
 
     const userUpdates = {
@@ -179,7 +293,7 @@ export const updatePortfolio = async (req, res) => {
       action: "portfolio.updated",
       entityType: "Portfolio",
       entityId: portfolio._id,
-      metadata: { owner: String(req.user._id) },
+      metadata: { owner: String(req.user._id), queuedCertificateReviews: queuedCertificates.length },
     });
 
     const populatedPortfolio = await updatedPortfolio.populate(
@@ -226,6 +340,9 @@ export const getPublicPortfolio = async (req, res) => {
         project.visibility === "public" &&
         project.verificationStatus === "verified"
     );
+    const publicCertificates = (portfolio.certificates || []).filter(
+      (certificate) => certificate.verificationStatus === "verified"
+    );
 
     res.status(200).json({
       _id: portfolio._id,
@@ -237,7 +354,13 @@ export const getPublicPortfolio = async (req, res) => {
       bio: portfolio.bio,
       skills: portfolio.skills,
       githubLink: portfolio.githubLink,
+<<<<<<< HEAD
+      education: portfolio.education || [],
       certificates: portfolio.certificates,
+=======
+      degree: portfolio.degree || "",
+      certificates: publicCertificates,
+>>>>>>> 368968e66cf7d6dcbb335f03665c323669d1a628
       projects: publicProjects.map(toPublicProject),
       badges,
       verifiedProjects: publicProjects.length,

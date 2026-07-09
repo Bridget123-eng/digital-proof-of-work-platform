@@ -33,10 +33,16 @@ const projectSchema = new mongoose.Schema(
       default: "",
     },
 
-    proofFiles: {
-      type: [String],
-      default: [],
-    },
+    proofFiles: [
+      {
+        url: String,
+        type: {
+          type: String,
+          enum: ["image", "video", "document", "link"],
+        },
+        title: String,
+      },
+    ],
 
     certificates: [
       {
@@ -117,6 +123,10 @@ const projectSchema = new mongoose.Schema(
 
     reviewedAt: {
       type: Date,
+    },
+    githubData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
   },
   { timestamps: true }

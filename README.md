@@ -25,7 +25,7 @@ npm install
 npm run dev
 ```
 
-4. Install and start the frontend in a second terminal:
+4.Install and start the frontend in a second terminal:
 
 ```bash
 cd frontend
@@ -50,4 +50,3 @@ npm test
 - Frontend requires `VITE_API_URL` pointing to the deployed backend `/api` base URL.
 - The backend exposes `/api/health` for deployment health checks.
 - The AI feature is intentionally deterministic in this release so it can be evaluated safely before introducing an external model.
-

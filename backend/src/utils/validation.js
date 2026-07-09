@@ -24,7 +24,11 @@ export const validateProjectPayload = (payload = {}) => {
     errors.push("Provide at least three relevant skills.");
   }
 
-  const hasEvidenceLink = hasUrl(githubLink) || hasUrl(liveLink) || proofFiles.some((file) => hasUrl(file)) || certificates.some((certificate) => hasUrl(certificate?.fileUrl));
+  const hasEvidenceLink =
+    hasUrl(githubLink) ||
+    hasUrl(liveLink) ||
+    proofFiles.some((file) => hasUrl(typeof file === "string" ? file : file?.url)) ||
+    certificates.some((certificate) => hasUrl(certificate?.fileUrl));
 
   if (!hasEvidenceLink) {
     errors.push("Submit at least one repository, demo, proof file, or certificate link as evidence.");

@@ -12,11 +12,13 @@ const roleAliases = {
 const allowedRoles = [
   "student",
   "verifier",
+  "reviewer",
   "recruiter",
+  "mentor",
   "admin",
   "administrator",
 ];
-const selfSignupRoles = new Set(["student"]);
+const selfSignupRoles = new Set(["student", "mentor"]);
 
 const normalizeRole = (role = "student") => roleAliases[role] || role;
 const cleanEmail = (email) => String(email || "").trim().toLowerCase();
@@ -113,7 +115,7 @@ export const registerUser = async (req, res) => {
       email: normalizedEmail,
       username: normalizedEmail,
       password: hashedPassword,
-      role: isBootstrapAdmin ? "admin" : "student",
+      role: isBootstrapAdmin ? "admin" : normalizedRole,
     });
 
     await createAuditEvent({

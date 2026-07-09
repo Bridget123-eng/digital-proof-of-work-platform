@@ -12,13 +12,18 @@ const dashboardConfig = {
   },
   verifier: {
     badge: "Verifier workspace",
-    heading: "",
-    description: "",
+    heading: "Verify evidence and maintain trust.",
+    description: "Inspect submitted repositories, documents, and certificates to ensure platform integrity.",
   },
   reviewer: {
     badge: "Reviewer workspace",
-    heading: "",
-    description: "",
+    heading: "Verify evidence and maintain trust.",
+    description: "Inspect submitted repositories, documents, and certificates to ensure platform integrity.",
+  },
+  mentor: {
+    badge: "Mentor workspace",
+    heading: "Guide students and review their growth.",
+    description: "Browse student portfolios, provide feedback on projects, and track verified accomplishments.",
   },
   recruiter: {
     badge: "Recruiter workspace",
@@ -132,13 +137,13 @@ function Dashboard() {
         requests.push(["badges", API.get("/system/badges/me")]);
       }
 
-      if (role === "verifier" || role === "reviewer" || role === "admin") {
+      if (role === "verifier" || role === "reviewer" || role === "mentor" || role === "admin") {
         requests.push(["queue", API.get("/projects/queue?status=pending")]);
         requests.push(["audit", API.get("/system/audit")]);
         requests.push(["reviewAnalytics", API.get("/projects/reviewer-analytics")]);
       }
 
-      if (role === "recruiter" || role === "admin") {
+      if (role === "recruiter" || role === "mentor" || role === "admin") {
         requests.push(["analytics", API.get("/projects/analytics")]);
         requests.push(["publicProjects", API.get("/projects")]);
       }
@@ -248,6 +253,12 @@ function Dashboard() {
       { label: "Public candidates", type: "route", route: "/workspace/public-projects", detail: "Review trusted portfolios." },
       { label: "My profile", type: "route", route: "/edit-portfolio", detail: "Maintain your recruiter profile." },
     ],
+    mentor: [
+      { label: "Explore work", type: "route", route: "/explore", detail: "Browse student portfolios and work." },
+      { label: "Guidance analytics", type: "route", route: "/workspace/analytics", detail: "Track student project quality." },
+      { label: "Review queue", type: "route", route: "/workspace/queue", detail: "Review assigned student work." },
+      { label: "My profile", type: "route", route: "/edit-portfolio", detail: "Maintain your mentor profile." },
+    ],
     admin: [
       { label: "User management", type: "route", route: "/workspace/users", detail: "Create, suspend, reset, and reassign accounts." },
       { label: "Verification management", type: "route", route: "/workspace/verification-management", detail: "Monitor pending, rejected, and bottlenecked reviews." },
@@ -281,6 +292,11 @@ function Dashboard() {
       { value: dashboardData.analytics?.verified || 0, label: "Verified projects" },
       { value: dashboardData.analytics?.verificationRate || 0, label: "Verification rate %" },
       { value: dashboardData.publicProjects.length, label: "Public work items" },
+    ],
+    mentor: [
+      { value: dashboardData.analytics?.verified || 0, label: "Verified projects" },
+      { value: dashboardData.analytics?.total || 0, label: "Total student work" },
+      { value: dashboardData.queue.length, label: "Assigned for review" },
     ],
     admin: [
       { value: adminOverview?.metrics?.totalUsers || dashboardData.users.length, label: "Total users" },
@@ -698,7 +714,7 @@ function Dashboard() {
                 </section>
               )}
 
-              {role === "admin-inline-disabled" && (
+              {role === "student" && (
                 <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
                   <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -790,7 +806,7 @@ function Dashboard() {
                 </section>
               )}
 
-              {role === "admin-inline-disabled" && (
+              {(role === "admin" || role === "reviewer" || role === "verifier" || role === "mentor") && (
                 <section id={role === "admin" ? "verification-management" : "queue"} className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -813,7 +829,7 @@ function Dashboard() {
                       </div>
                     )}
                   </div>
-                  {(role === "verifier" || role === "reviewer") && (
+                  {(role === "verifier" || role === "reviewer" || role === "mentor") && (
                     <div id="reviewer-analytics" className="mt-4 grid gap-3 md:grid-cols-4">
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <p className="text-sm text-slate-400">Reviews completed</p>
@@ -895,8 +911,8 @@ function Dashboard() {
                                     </a>
                                   )}
                                   {(project.proofFiles || []).map((file, index) => (
-                                    <a key={file} href={file} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-3 py-1 text-sm text-slate-200">
-                                      File {index + 1}
+                                    <a key={index} href={typeof file === "string" ? file : file.url} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-3 py-1 text-sm text-slate-200">
+                                      {typeof file === "string" ? `File ${index + 1}` : (file.title || `File ${index + 1}`)}
                                     </a>
                                   ))}
                                   {(project.certificates || []).map((certificate, index) => (
@@ -1026,7 +1042,7 @@ function Dashboard() {
                 </section>
               )}
 
-              {role === "admin-inline-disabled" && (
+              {(role === "admin" || role === "recruiter" || role === "mentor") && (
                 <section id={role === "admin" ? "analytics-dashboard" : "analytics"} className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
                   <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
                     <p className="text-sm uppercase tracking-[0.22em] text-sky-300">Analytics dashboard</p>
@@ -1099,7 +1115,7 @@ function Dashboard() {
                 </section>
               )}
 
-              {role === "admin-inline-disabled" && (
+              {role === "admin" && (
                 <>
                   <section id="users" className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
                     <form onSubmit={createAdminUser} className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
