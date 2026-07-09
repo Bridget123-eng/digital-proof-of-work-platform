@@ -360,7 +360,11 @@ function WorkspaceDetail() {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <p className="font-semibold text-slate-900">Student context</p>
                   <p className="mt-2 text-sm text-slate-700">Skills: {(project.skills || []).join(", ") || "None listed"}</p>
+<<<<<<< HEAD
                   <p className="mt-2 text-sm text-slate-700">Education: {(project.studentPortfolio?.education || []).map(e => `${e.degree} at ${e.school}`).join(", ") || "Not listed."}</p>
+=======
+                  <p className="mt-2 text-sm text-slate-700">Degree: {project.studentPortfolio?.degree || "Not listed."}</p>
+>>>>>>> 368968e66cf7d6dcbb335f03665c323669d1a628
                   <p className="mt-2 text-sm text-slate-700">Portfolio bio: {project.studentPortfolio?.bio || "No bio available."}</p>
                   <p className="mt-2 text-sm text-slate-700">GitHub: {project.studentPortfolio?.githubLink || "Not linked."}</p>
                 </div>

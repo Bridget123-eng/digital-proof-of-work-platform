@@ -65,6 +65,7 @@ function Profile() {
               <div className="mt-4 grid gap-4">
                 {projects.map((project) => (
                   <article key={project._id} className="rounded border border-slate-200 bg-white p-5">
+<<<<<<< HEAD
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="flex-1">
                         <h3 className="text-xl font-semibold">{project.title}</h3>
@@ -94,6 +95,19 @@ function Profile() {
                       )}
                       {project.liveLink && (
                         <a className="rounded border border-slate-300 px-3 py-1 text-sm text-sky-700 font-semibold" href={project.liveLink} target="_blank" rel="noreferrer">
+=======
+                    <h3 className="text-xl font-semibold">{project.title}</h3>
+                    <p className="mt-2 text-slate-700">{project.description}</p>
+                    <p className="mt-3 text-sm text-emerald-800">Verification score {project.analysis?.score || 0}/100</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {project.githubLink && (
+                        <a className="rounded border border-slate-300 px-3 py-1 text-sm text-sky-700" href={project.githubLink} target="_blank" rel="noreferrer">
+                          Repository
+                        </a>
+                      )}
+                      {project.liveLink && (
+                        <a className="rounded border border-slate-300 px-3 py-1 text-sm text-sky-700" href={project.liveLink} target="_blank" rel="noreferrer">
+>>>>>>> 368968e66cf7d6dcbb335f03665c323669d1a628
                           Live demo
                         </a>
                       )}

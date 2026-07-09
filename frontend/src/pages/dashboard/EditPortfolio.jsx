@@ -265,6 +265,17 @@ function EditPortfolio() {
                   </label>
                 </div>
 
+                <label className="grid gap-1">
+                  <span className="font-medium">Degree</span>
+                  <input
+                    name="degree"
+                    value={formData.degree}
+                    placeholder="B.Tech Computer Science, MBA, Diploma in Data Science"
+                    className="rounded border p-3"
+                    onChange={handleChange}
+                  />
+                </label>
+
                 <section className="grid gap-3 rounded border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center justify-between">
                     <h2 className="font-semibold">Education</h2>

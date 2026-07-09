@@ -53,6 +53,7 @@ const toPublicProject = (project, verifiedProjectCounts = new Map()) => {
     githubData: plainProject.githubData || null,
     analysis: plainProject.analysis || null,
     evidenceType: plainProject.evidenceType,
+    certificates: plainProject.certificates || [],
     verificationStatus: "verified",
     createdAt: plainProject.createdAt,
     updatedAt: plainProject.updatedAt,
@@ -357,6 +358,42 @@ export const reviewProject = async (req, res) => {
         },
         { upsert: true, new: true }
       );
+    }
+
+    if (project.certificates?.length) {
+      const portfolio = await Portfolio.findOneAndUpdate(
+        { studentId: project.user },
+        { $setOnInsert: { studentId: project.user } },
+        { upsert: true, new: true }
+      );
+
+      project.certificates.forEach((projectCertificate) => {
+        const projectFileUrl = normalizeText(projectCertificate.fileUrl, 500).toLowerCase();
+        const projectTitle = normalizeText(projectCertificate.title, 120).toLowerCase();
+        const existingCertificate = portfolio.certificates.find((certificate) => {
+          const fileUrl = normalizeText(certificate.fileUrl, 500).toLowerCase();
+          const title = normalizeText(certificate.title, 120).toLowerCase();
+          return (projectFileUrl && fileUrl === projectFileUrl) || (projectTitle && title === projectTitle);
+        });
+
+        if (existingCertificate) {
+          existingCertificate.verificationStatus = status;
+          existingCertificate.reviewNote = normalizedNote;
+          existingCertificate.reviewedAt = new Date();
+        } else {
+          portfolio.certificates.push({
+            title: projectCertificate.title,
+            fileUrl: projectCertificate.fileUrl,
+            issuedBy: projectCertificate.issuedBy,
+            issuedDate: projectCertificate.issuedDate,
+            verificationStatus: status,
+            reviewNote: normalizedNote,
+            reviewedAt: new Date(),
+          });
+        }
+      });
+
+      await portfolio.save();
     }
 
     await createAuditEvent({

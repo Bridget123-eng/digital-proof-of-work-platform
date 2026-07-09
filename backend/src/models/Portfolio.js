@@ -28,6 +28,12 @@ const portfolioSchema = new mongoose.Schema(
       default: "",
     },
 
+    degree: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     // Linked projects
     projects: [
       {
@@ -68,6 +74,21 @@ const portfolioSchema = new mongoose.Schema(
         },
 
         issuedDate: {
+          type: Date,
+        },
+
+        verificationStatus: {
+          type: String,
+          enum: ["pending", "in_review", "verified", "rejected", "changes_requested"],
+          default: "pending",
+        },
+
+        reviewNote: {
+          type: String,
+          default: "",
+        },
+
+        reviewedAt: {
           type: Date,
         },
       },
