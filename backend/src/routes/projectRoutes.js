@@ -16,12 +16,7 @@ const router = express.Router();
 
 router.post("/", protect, authorize("student"), createProject);
 
-router.get("/my-projects", protect, getUserProjects);
-
-router.get(
-  "/queue",
-  protect,
-  authorize("reviewer", "admin"),
+router.get("/my-projects", protect, getUserProje
   getVerificationQueue
 );
 
@@ -31,20 +26,13 @@ router.get(
   authorize("recruiter", "mentor", "admin"),
   getProjectAnalytics
 );
-
 router.get(
   "/reviewer-analytics",
   protect,
-  authorize("reviewer", "admin"),
   getReviewerAnalytics
 );
 
-router.patch(
-  "/:id/review",
-  protect,
-  authorize("reviewer"),
-  reviewProject
-);
+router.patch("/:id/review", reviewProject);
 
 router.get("/", getPublicProjects);
 

@@ -282,8 +282,11 @@ export const getVerificationQueue = async (req, res) => {
 
     if (status !== "all") query.verificationStatus = status;
     if (q) query.$text = { $search: q };
-    if (!["admin", "recruiter"].includes(req.user.role)) {
-      const studentsForVerifier = await getReviewableStudentIds(req.user._id);
+    if (req.user.role !== "admin") {
+      const studentsForVerifier = await User.find({
+        role: "student",
+        assignedVerifier: req.user._id,
+      }).distinct("_id");
       query.user = { $in: studentsForVerifier };
     }
 
@@ -445,11 +448,7 @@ export const getReviewerAnalytics = async (req, res) => {
 
     const [reviewsCompleted, pendingReviews, approvedReviews, reviewedProjects] = await Promise.all([
       Project.countDocuments(completedFilter),
-      Project.countDocuments(
-        req.user.role === "admin"
-          ? { verificationStatus: "pending" }
-          : { verificationStatus: "pending", user: { $in: assignedStudentIds } }
-      ),
+      Project.countDocuments({ verificationStatus: "pending" }),
       Project.countDocuments({ ...completedFilter, verificationStatus: "verified" }),
       Project.find(completedFilter).select("createdAt reviewedAt verificationStatus").lean(),
     ]);

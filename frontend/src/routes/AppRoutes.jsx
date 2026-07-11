@@ -47,7 +47,11 @@ function AppRoutes() {
         <Route
           path="/edit-portfolio"
           element={
+<<<<<<< HEAD
             <ProtectedRoute allowedRoles={["student", "reviewer", "recruiter", "mentor", "admin"]}>
+=======
+            <ProtectedRoute allowedRoles={["student", "verifier", "reviewer", "recruiter", "mentor", "admin"]}>
+>>>>>>> 870403f96cbdd80795c1c0b06a5b2872cba0250d
               <EditPortfolio />
             </ProtectedRoute>
           }
@@ -56,7 +60,11 @@ function AppRoutes() {
         <Route
           path="/workspace/:view"
           element={
+<<<<<<< HEAD
             <ProtectedRoute allowedRoles={["reviewer", "recruiter", "admin"]}>
+=======
+            <ProtectedRoute allowedRoles={["verifier", "reviewer", "recruiter", "mentor", "admin"]}>
+>>>>>>> 870403f96cbdd80795c1c0b06a5b2872cba0250d
               <WorkspaceDetail />
             </ProtectedRoute>
           }

@@ -360,8 +360,16 @@ function WorkspaceDetail() {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <p className="font-semibold text-slate-900">Student context</p>
                   <p className="mt-2 text-sm text-slate-700">Skills: {(project.skills || []).join(", ") || "None listed"}</p>
+<<<<<<< HEAD
                   <p className="mt-2 text-sm text-slate-700">Education: {(project.studentPortfolio?.education || []).map(e => `${e.degree} at ${e.school}`).join(", ") || "Not listed."}</p>
                   <p className="mt-2 text-sm text-slate-700">Degree: {project.studentPortfolio?.degree || "Not listed."}</p>
+=======
+<<<<<<< HEAD
+                  <p className="mt-2 text-sm text-slate-700">Education: {(project.studentPortfolio?.education || []).map(e => `${e.degree} at ${e.school}`).join(", ") || "Not listed."}</p>
+=======
+                  <p className="mt-2 text-sm text-slate-700">Degree: {project.studentPortfolio?.degree || "Not listed."}</p>
+>>>>>>> 368968e66cf7d6dcbb335f03665c323669d1a628
+>>>>>>> 870403f96cbdd80795c1c0b06a5b2872cba0250d
                   <p className="mt-2 text-sm text-slate-700">Portfolio bio: {project.studentPortfolio?.bio || "No bio available."}</p>
                   <p className="mt-2 text-sm text-slate-700">GitHub: {project.studentPortfolio?.githubLink || "Not linked."}</p>
                 </div>
@@ -440,6 +448,10 @@ function WorkspaceDetail() {
           <select value={createUserForm.role} onChange={(event) => setCreateUserForm((current) => ({ ...current, role: event.target.value }))} className="rounded border border-slate-300 px-3 py-2">
             <option value="student">student</option>
             <option value="reviewer">reviewer</option>
+<<<<<<< HEAD
+=======
+            <option value="verifier">verifier</option>
+>>>>>>> 870403f96cbdd80795c1c0b06a5b2872cba0250d
             <option value="mentor">mentor</option>
             <option value="recruiter">recruiter</option>
             <option value="admin">admin</option>
@@ -462,6 +474,10 @@ function WorkspaceDetail() {
                 <select value={rowEdits[entry._id]?.role || normalizeRole(entry.role)} onChange={(event) => setRowEdits((current) => ({ ...current, [entry._id]: { ...current[entry._id], role: event.target.value } }))} className="rounded border border-slate-300 px-3 py-2">
                   <option value="student">student</option>
                   <option value="reviewer">reviewer</option>
+<<<<<<< HEAD
+=======
+                  <option value="verifier">verifier</option>
+>>>>>>> 870403f96cbdd80795c1c0b06a5b2872cba0250d
                   <option value="mentor">mentor</option>
                   <option value="recruiter">recruiter</option>
                   <option value="admin">admin</option>
