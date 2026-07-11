@@ -12,10 +12,7 @@ const roleAliases = {
 
 const allowedRoles = [
   "student",
-<<<<<<< HEAD
-=======
   "verifier",
->>>>>>> 870403f96cbdd80795c1c0b06a5b2872cba0250d
   "reviewer",
   "recruiter",
   "mentor",

@@ -5,6 +5,7 @@ import Notification from "../models/Notification.js";
 import Badge from "../models/Badge.js";
 import { analyzeProject } from "../utils/analyzeProject.js";
 import { analyzeGithubRepo } from "../services/githubService.js";
+import { analyzeGithubRepo } from "../services/githubService.js";
 import { createAuditEvent } from "../utils/audit.js";
 import { validateProjectPayload } from "../utils/validation.js";
 
@@ -61,7 +62,12 @@ const toPublicProject = (project, verifiedProjectCounts = new Map()) => {
     certificates: plainProject.certificates || [],
     githubData: plainProject.githubData || null,
     analysis: plainProject.analysis || null,
+    proofFiles: plainProject.proofFiles || [],
+    certificates: plainProject.certificates || [],
+    githubData: plainProject.githubData || null,
+    analysis: plainProject.analysis || null,
     evidenceType: plainProject.evidenceType,
+    certificates: plainProject.certificates || [],
     certificates: plainProject.certificates || [],
     verificationStatus: "verified",
     createdAt: plainProject.createdAt,
@@ -116,6 +122,14 @@ export const createProject = async (req, res) => {
       }))
       .filter((file) => file.url)
       .slice(0, 10);
+    const proofFileList = (Array.isArray(proofFiles) ? proofFiles : [])
+      .map((file) => ({
+        url: normalizeText(typeof file === "string" ? file : file?.url, 500),
+        type: ["image", "video", "document", "link"].includes(file?.type) ? file.type : "link",
+        title: normalizeText(file?.title, 120),
+      }))
+      .filter((file) => file.url)
+      .slice(0, 10);
     const certificateList = normalizeCertificates(certificates);
 
     const existingProject = await Project.findOne({
@@ -159,6 +173,11 @@ export const createProject = async (req, res) => {
       githubData = await analyzeGithubRepo(githubLink);
     }
 
+    let githubData = null;
+    if (githubLink) {
+      githubData = await analyzeGithubRepo(githubLink);
+    }
+
     const project = await Project.create({
       user: req.user._id,
       title: normalizedTitle,
@@ -171,6 +190,7 @@ export const createProject = async (req, res) => {
       proofFiles: proofFileList,
       certificates: certificateList,
       analysis,
+      githubData,
       githubData,
     });
 
@@ -228,8 +248,32 @@ export const getPublicProjects = async (req, res) => {
   try {
     const { skill, tech, lang, search } = req.query;
     const query = {
+    const { skill, tech, lang, search } = req.query;
+    const query = {
       visibility: "public",
       verificationStatus: "verified",
+    };
+
+    if (skill || tech) {
+      const skillTerms = (skill || "").split(",").concat((tech || "").split(",")).map(s => s.trim()).filter(Boolean);
+      if (skillTerms.length > 0) {
+        query.skills = { $in: skillTerms.map(s => new RegExp(s, "i")) };
+      }
+    }
+
+    if (lang) {
+      query["githubData.metadata.language"] = new RegExp(lang.trim(), "i");
+    }
+
+    if (search) {
+      query.$or = [
+        { title: new RegExp(search, "i") },
+        { description: new RegExp(search, "i") },
+        { skills: new RegExp(search, "i") },
+      ];
+    }
+
+    const projects = await Project.find(query)
     };
 
     if (skill || tech) {
@@ -282,11 +326,13 @@ export const getVerificationQueue = async (req, res) => {
 
     if (status !== "all") query.verificationStatus = status;
     if (q) query.$text = { $search: q };
-    if (req.user.role !== "admin") {
+    if (!["admin", "recruiter"].includes(req.user.role)) {
       const studentsForVerifier = await User.find({
         role: "student",
         assignedVerifier: req.user._id,
       }).distinct("_id");
+    if (!["admin", "recruiter"].includes(req.user.role)) {
+      const studentsForVerifier = await getReviewableStudentIds(req.user._id);
       query.user = { $in: studentsForVerifier };
     }
 
@@ -421,6 +467,42 @@ export const reviewProject = async (req, res) => {
       await portfolio.save();
     }
 
+    if (project.certificates?.length) {
+      const portfolio = await Portfolio.findOneAndUpdate(
+        { studentId: project.user },
+        { $setOnInsert: { studentId: project.user } },
+        { upsert: true, new: true }
+      );
+
+      project.certificates.forEach((projectCertificate) => {
+        const projectFileUrl = normalizeText(projectCertificate.fileUrl, 500).toLowerCase();
+        const projectTitle = normalizeText(projectCertificate.title, 120).toLowerCase();
+        const existingCertificate = portfolio.certificates.find((certificate) => {
+          const fileUrl = normalizeText(certificate.fileUrl, 500).toLowerCase();
+          const title = normalizeText(certificate.title, 120).toLowerCase();
+          return (projectFileUrl && fileUrl === projectFileUrl) || (projectTitle && title === projectTitle);
+        });
+
+        if (existingCertificate) {
+          existingCertificate.verificationStatus = status;
+          existingCertificate.reviewNote = normalizedNote;
+          existingCertificate.reviewedAt = new Date();
+        } else {
+          portfolio.certificates.push({
+            title: projectCertificate.title,
+            fileUrl: projectCertificate.fileUrl,
+            issuedBy: projectCertificate.issuedBy,
+            issuedDate: projectCertificate.issuedDate,
+            verificationStatus: status,
+            reviewNote: normalizedNote,
+            reviewedAt: new Date(),
+          });
+        }
+      });
+
+      await portfolio.save();
+    }
+
     await createAuditEvent({
       actor: req.user._id,
       action: "project.reviewed",
@@ -448,7 +530,16 @@ export const getReviewerAnalytics = async (req, res) => {
 
     const [reviewsCompleted, pendingReviews, approvedReviews, reviewedProjects] = await Promise.all([
       Project.countDocuments(completedFilter),
-      Project.countDocuments({ verificationStatus: "pending" }),
+      Project.countDocuments(
+        req.user.role === "admin"
+          ? { verificationStatus: "pending" }
+          : { verificationStatus: "pending", assignedVerifier: req.user._id }
+      ),
+      Project.countDocuments(
+        req.user.role === "admin"
+          ? { verificationStatus: "pending" }
+          : { verificationStatus: "pending", user: { $in: assignedStudentIds } }
+      ),
       Project.countDocuments({ ...completedFilter, verificationStatus: "verified" }),
       Project.find(completedFilter).select("createdAt reviewedAt verificationStatus").lean(),
     ]);
@@ -484,16 +575,24 @@ export const getProjectAnalytics = async (req, res) => {
     const baseFilter = isRecruiterOrMentor
       ? { visibility: "public", verificationStatus: "verified" }
       : {};
+    const isRecruiterOrMentor = ["recruiter", "mentor"].includes(req.user.role);
+    const baseFilter = isRecruiterOrMentor
+      ? { visibility: "public", verificationStatus: "verified" }
+      : {};
 
     const [total, pending, verified, rejected, inReview] = await Promise.all([
       Project.countDocuments(baseFilter),
       isRecruiterOrMentor ? 0 : Project.countDocuments({ verificationStatus: "pending" }),
+      isRecruiterOrMentor ? 0 : Project.countDocuments({ verificationStatus: "pending" }),
       Project.countDocuments({ ...baseFilter, verificationStatus: "verified" }),
+      isRecruiterOrMentor ? 0 : Project.countDocuments({ verificationStatus: "rejected" }),
+      isRecruiterOrMentor ? 0 : Project.countDocuments({ verificationStatus: "in_review" }),
       isRecruiterOrMentor ? 0 : Project.countDocuments({ verificationStatus: "rejected" }),
       isRecruiterOrMentor ? 0 : Project.countDocuments({ verificationStatus: "in_review" }),
     ]);
 
     const recent = await Project.find(baseFilter)
+      .populate("user", isRecruiterOrMentor ? "name profileImage" : "name email")
       .populate("user", isRecruiterOrMentor ? "name profileImage" : "name email")
       .sort({ updatedAt: -1 })
       .limit(8)
@@ -506,6 +605,7 @@ export const getProjectAnalytics = async (req, res) => {
       rejected,
       inReview,
       verificationRate: total ? Math.round((verified / total) * 100) : 0,
+      recent: isRecruiterOrMentor ? recent.map((project) => toPublicProject(project)) : recent,
       recent: isRecruiterOrMentor ? recent.map((project) => toPublicProject(project)) : recent,
     });
   } catch (error) {

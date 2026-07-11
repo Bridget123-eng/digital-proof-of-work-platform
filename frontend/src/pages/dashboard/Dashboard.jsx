@@ -10,14 +10,11 @@ const dashboardConfig = {
     description:
       "Manage your verified profile, submit evidence, and track how your proof-of-work is moving through review.",
   },
-<<<<<<< HEAD
-=======
   verifier: {
     badge: "Verifier workspace",
     heading: "Verify evidence and maintain trust.",
     description: "Inspect submitted repositories, documents, and certificates to ensure platform integrity.",
   },
->>>>>>> 870403f96cbdd80795c1c0b06a5b2872cba0250d
   reviewer: {
     badge: "Reviewer workspace",
     heading: "Verify evidence and maintain trust.",
@@ -140,11 +137,7 @@ function Dashboard() {
         requests.push(["badges", API.get("/system/badges/me")]);
       }
 
-<<<<<<< HEAD
-      if (role === "reviewer" || role === "admin") {
-=======
       if (role === "verifier" || role === "reviewer" || role === "mentor" || role === "admin") {
->>>>>>> 870403f96cbdd80795c1c0b06a5b2872cba0250d
         requests.push(["queue", API.get("/projects/queue?status=pending")]);
         requests.push(["audit", API.get("/system/audit")]);
         requests.push(["reviewAnalytics", API.get("/projects/reviewer-analytics")]);
@@ -257,10 +250,7 @@ function Dashboard() {
     mentor: [
       { label: "Explore work", type: "route", route: "/explore", detail: "Browse student portfolios and work." },
       { label: "Guidance analytics", type: "route", route: "/workspace/analytics", detail: "Track student project quality." },
-<<<<<<< HEAD
-=======
       { label: "Review queue", type: "route", route: "/workspace/queue", detail: "Review assigned student work." },
->>>>>>> 870403f96cbdd80795c1c0b06a5b2872cba0250d
       { label: "My profile", type: "route", route: "/edit-portfolio", detail: "Maintain your mentor profile." },
     ],
     admin: [
@@ -805,11 +795,7 @@ function Dashboard() {
                 </section>
               )}
 
-<<<<<<< HEAD
-              {(role === "admin" || role === "reviewer") && (
-=======
               {(role === "admin" || role === "reviewer" || role === "verifier" || role === "mentor") && (
->>>>>>> 870403f96cbdd80795c1c0b06a5b2872cba0250d
                 <section id={role === "admin" ? "verification-management" : "queue"} className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -832,11 +818,7 @@ function Dashboard() {
                       </div>
                     )}
                   </div>
-<<<<<<< HEAD
-                  {role === "reviewer" && (
-=======
                   {(role === "verifier" || role === "reviewer" || role === "mentor") && (
->>>>>>> 870403f96cbdd80795c1c0b06a5b2872cba0250d
                     <div id="reviewer-analytics" className="mt-4 grid gap-3 md:grid-cols-4">
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <p className="text-sm text-slate-400">Reviews completed</p>

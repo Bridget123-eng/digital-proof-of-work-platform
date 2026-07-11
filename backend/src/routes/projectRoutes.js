@@ -16,7 +16,12 @@ const router = express.Router();
 
 router.post("/", protect, authorize("student"), createProject);
 
-router.get("/my-projects", protect, getUserProje
+router.get("/my-projects", protect, getUserProjects);
+
+router.get(
+  "/queue",
+  protect,
+  authorize("reviewer", "admin"),
   getVerificationQueue
 );
 
@@ -32,7 +37,7 @@ router.get(
   getReviewerAnalytics
 );
 
-router.patch("/:id/review", reviewProject);
+router.patch("/:id/review", protect, authorize("reviewer"), reviewProject);
 
 router.get("/", getPublicProjects);
 
