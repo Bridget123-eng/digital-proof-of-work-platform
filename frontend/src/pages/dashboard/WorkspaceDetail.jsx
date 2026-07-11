@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import API from "../../api/axios";
 import { AuthContext } from "../../context/authContextValue";
 
-const normalizeRole = (role) => (role === "administrator" ? "admin" : role || "student");
+const normalizeRole = (role) => ({ administrator: "admin", verifier: "reviewer" }[role] || role || "student");
 const formatStatusLabel = (status) => String(status || "pending").replace(/_/g, " ");
 
 const viewTitles = {
@@ -360,11 +360,8 @@ function WorkspaceDetail() {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <p className="font-semibold text-slate-900">Student context</p>
                   <p className="mt-2 text-sm text-slate-700">Skills: {(project.skills || []).join(", ") || "None listed"}</p>
-<<<<<<< HEAD
                   <p className="mt-2 text-sm text-slate-700">Education: {(project.studentPortfolio?.education || []).map(e => `${e.degree} at ${e.school}`).join(", ") || "Not listed."}</p>
-=======
                   <p className="mt-2 text-sm text-slate-700">Degree: {project.studentPortfolio?.degree || "Not listed."}</p>
->>>>>>> 368968e66cf7d6dcbb335f03665c323669d1a628
                   <p className="mt-2 text-sm text-slate-700">Portfolio bio: {project.studentPortfolio?.bio || "No bio available."}</p>
                   <p className="mt-2 text-sm text-slate-700">GitHub: {project.studentPortfolio?.githubLink || "Not linked."}</p>
                 </div>
@@ -375,19 +372,21 @@ function WorkspaceDetail() {
               </div>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Decision</p>
-              <textarea
+              {role === "reviewer" ? <>
+                <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Decision</p>
+                <textarea
                 value={reviewNotes[project._id] || ""}
                 onChange={(event) => setReviewNotes((current) => ({ ...current, [project._id]: event.target.value }))}
                 rows="7"
                 placeholder="Add review notes."
                 className="mt-3 w-full rounded border border-slate-300 p-3 text-sm"
               />
-              <div className="mt-3 grid gap-2">
+                <div className="mt-3 grid gap-2">
                 <button type="button" disabled={busyKey === `review-${project._id}-verified`} onClick={() => submitReview(project._id, "verified")} className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60">Approve</button>
                 <button type="button" disabled={busyKey === `review-${project._id}-rejected`} onClick={() => submitReview(project._id, "rejected")} className="rounded border border-rose-300 px-4 py-2 font-semibold text-rose-700 disabled:opacity-60">Reject</button>
                 <button type="button" disabled={busyKey === `review-${project._id}-changes_requested`} onClick={() => submitReview(project._id, "changes_requested")} className="rounded border border-amber-300 px-4 py-2 font-semibold text-amber-700 disabled:opacity-60">Request changes</button>
-              </div>
+                </div>
+              </> : <p className="text-sm text-slate-600">This queue is visible for monitoring. Only reviewer accounts can approve, reject, or request changes.</p>}
             </div>
           </div>
         </article>
@@ -441,7 +440,6 @@ function WorkspaceDetail() {
           <select value={createUserForm.role} onChange={(event) => setCreateUserForm((current) => ({ ...current, role: event.target.value }))} className="rounded border border-slate-300 px-3 py-2">
             <option value="student">student</option>
             <option value="reviewer">reviewer</option>
-            <option value="verifier">verifier</option>
             <option value="mentor">mentor</option>
             <option value="recruiter">recruiter</option>
             <option value="admin">admin</option>
@@ -464,7 +462,6 @@ function WorkspaceDetail() {
                 <select value={rowEdits[entry._id]?.role || normalizeRole(entry.role)} onChange={(event) => setRowEdits((current) => ({ ...current, [entry._id]: { ...current[entry._id], role: event.target.value } }))} className="rounded border border-slate-300 px-3 py-2">
                   <option value="student">student</option>
                   <option value="reviewer">reviewer</option>
-                  <option value="verifier">verifier</option>
                   <option value="mentor">mentor</option>
                   <option value="recruiter">recruiter</option>
                   <option value="admin">admin</option>
@@ -479,11 +476,11 @@ function WorkspaceDetail() {
               </label>
               {normalizeRole(entry.role) === "student" ? (
                 <label className="grid gap-1 text-sm text-slate-600">
-                  <span>Verifier</span>
+                  <span>Reviewer</span>
                   <select value={rowEdits[entry._id]?.assignedVerifier || ""} onChange={(event) => setRowEdits((current) => ({ ...current, [entry._id]: { ...current[entry._id], assignedVerifier: event.target.value } }))} className="rounded border border-slate-300 px-3 py-2">
                     <option value="">Unassigned</option>
                     {data.users
-                      .filter((userEntry) => ["verifier", "reviewer"].includes(normalizeRole(userEntry.role)) && (userEntry.status || "active") === "active")
+                      .filter((userEntry) => normalizeRole(userEntry.role) === "reviewer" && (userEntry.status || "active") === "active")
                       .map((verifier) => (
                         <option key={verifier._id} value={verifier._id}>{verifier.name}</option>
                       ))}

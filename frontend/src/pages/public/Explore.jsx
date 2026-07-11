@@ -21,6 +21,7 @@ function Explore() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchProjects();
   }, []);
 
@@ -86,7 +87,7 @@ function Explore() {
                 <div className="mt-4 rounded bg-slate-50 p-3 text-sm">
                   <p className="font-semibold text-slate-700">GitHub Analysis</p>
                   <p className="mt-1 text-slate-600">
-                    {project.githubData.metadata?.language || "Various"} • {project.githubData.metadata?.stars || 0} stars • {project.githubData.metadata?.commits || 0} commits
+                    {project.githubData.metadata?.language || "Various"} | {project.githubData.metadata?.stars || 0} stars | {project.githubData.metadata?.commits || 0} commits
                   </p>
                 </div>
               )}

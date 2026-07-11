@@ -7,11 +7,11 @@ import { EMAIL_NOT_CONFIGURED_MESSAGE, EmailServiceError, sendEmail } from "../u
 
 const roleAliases = {
   administrator: "admin",
+  verifier: "reviewer",
 };
 
 const allowedRoles = [
   "student",
-  "verifier",
   "reviewer",
   "recruiter",
   "mentor",

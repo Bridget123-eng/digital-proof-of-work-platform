@@ -9,7 +9,7 @@ import User from "../models/user.js";
 import { analyzeProject } from "../utils/analyzeProject.js";
 import { createAuditEvent } from "../utils/audit.js";
 
-const allowedRoles = new Set(["student", "verifier", "reviewer", "recruiter", "mentor", "admin", "administrator"]);
+const allowedRoles = new Set(["student", "reviewer", "recruiter", "mentor", "admin", "administrator"]);
 const allowedStatuses = new Set(["active", "suspended"]);
 const criticalAuditActions = new Set([
   "user.login",
@@ -243,12 +243,12 @@ export const updateUserRole = async (req, res) => {
       } else {
         const verifier = await User.findOne({
           _id: assignedVerifier,
-          role: { $in: ["verifier", "reviewer"] },
+          role: "reviewer",
           status: "active",
         });
 
         if (!verifier) {
-          return res.status(400).json({ message: "Assigned verifier must be an active verifier account" });
+          return res.status(400).json({ message: "Assigned reviewer must be an active reviewer account" });
         }
 
         updates.assignedVerifier = verifier._id;
@@ -621,7 +621,7 @@ export const seedDemoData = async (req, res) => {
     const password = await bcrypt.hash("Password123!", 10);
     const demoUsers = [
       { name: "Asha Student", email: "student@dpow.demo", role: "student" },
-      { name: "Vikram Verifier", email: "verifier@dpow.demo", role: "verifier" },
+      { name: "Vikram Reviewer", email: "reviewer@dpow.demo", role: "reviewer" },
       { name: "Riya Recruiter", email: "recruiter@dpow.demo", role: "recruiter" },
       { name: "Admin User", email: "admin@dpow.demo", role: "admin" },
     ];
@@ -658,7 +658,7 @@ export const seedDemoData = async (req, res) => {
         visibility: "public",
         evidenceType: "repository",
         verificationStatus: "verified",
-        reviewedBy: users.verifier._id,
+        reviewedBy: users.reviewer._id,
         reviewedAt: new Date(),
         reviewNote: "Repository, live demo, and description are consistent.",
         analysis,
@@ -686,7 +686,7 @@ export const seedDemoData = async (req, res) => {
         name: "Verified Proof of Work",
         description: "Demo badge awarded for verified repository evidence.",
         level: "gold",
-        awardedBy: users.verifier._id,
+        awardedBy: users.reviewer._id,
       },
       { upsert: true, new: true }
     );

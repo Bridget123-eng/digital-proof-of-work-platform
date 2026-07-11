@@ -21,7 +21,7 @@ router.get("/my-projects", protect, getUserProjects);
 router.get(
   "/queue",
   protect,
-  authorize("verifier", "reviewer", "mentor", "admin"),
+  authorize("reviewer", "admin"),
   getVerificationQueue
 );
 
@@ -35,14 +35,14 @@ router.get(
 router.get(
   "/reviewer-analytics",
   protect,
-  authorize("verifier", "reviewer", "mentor", "admin"),
+  authorize("reviewer", "admin"),
   getReviewerAnalytics
 );
 
 router.patch(
   "/:id/review",
   protect,
-  authorize("verifier", "reviewer", "mentor", "admin"),
+  authorize("reviewer"),
   reviewProject
 );
 

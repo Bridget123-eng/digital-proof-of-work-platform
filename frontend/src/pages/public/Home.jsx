@@ -11,7 +11,7 @@ function Home() {
           Digital Proof of Work Platform
         </h1>
         <p className="mt-5 max-w-2xl text-lg text-slate-600">
-          Submit project evidence, analyze repository quality, route work to human verifiers, award badges, and publish trusted portfolios for recruiters.
+          Submit project evidence, analyze repository quality, route work to human reviewers, award badges, and publish trusted portfolios for recruiters.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link className="rounded bg-slate-950 px-5 py-3 text-white" to="/register">

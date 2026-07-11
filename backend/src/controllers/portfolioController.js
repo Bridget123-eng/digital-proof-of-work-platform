@@ -42,7 +42,6 @@ const toPublicProject = (project) => ({
   githubLink: project.githubLink || "",
   liveLink: project.liveLink || "",
   proofFiles: project.proofFiles || [],
-  certificates: project.certificates || [],
   githubData: project.githubData || null,
   analysis: project.analysis || null,
   evidenceType: project.evidenceType,
@@ -167,13 +166,11 @@ export const createPortfolio = async (req, res) => {
       bio: normalizedBio,
       skills: normalizedSkills,
       githubLink: normalizedGithubLink,
-<<<<<<< HEAD
       education: education || [],
-      certificates: normalizeCertificates(certificates),
-=======
       degree: normalizedDegree,
       certificates: normalizedCertificates,
->>>>>>> 368968e66cf7d6dcbb335f03665c323669d1a628
+      profileImage: normalizedProfileImage,
+
     });
 
     await User.findByIdAndUpdate(req.user._id, {
@@ -354,13 +351,9 @@ export const getPublicPortfolio = async (req, res) => {
       bio: portfolio.bio,
       skills: portfolio.skills,
       githubLink: portfolio.githubLink,
-<<<<<<< HEAD
       education: portfolio.education || [],
-      certificates: portfolio.certificates,
-=======
       degree: portfolio.degree || "",
       certificates: publicCertificates,
->>>>>>> 368968e66cf7d6dcbb335f03665c323669d1a628
       projects: publicProjects.map(toPublicProject),
       badges,
       verifiedProjects: publicProjects.length,

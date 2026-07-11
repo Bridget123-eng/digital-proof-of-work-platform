@@ -12,6 +12,7 @@ import UploadProject from "../pages/dashboard/UploadProject";
 import MyProjects from "../pages/dashboard/Myprojects";
 import Notifications from "../pages/dashboard/Notifications";
 import MyBadges from "../pages/dashboard/MyBadges";
+import RecruiterRequirements from "../pages/dashboard/RecruiterRequirements";
 import Profile from "../pages/public/Profile";
 import Explore from "../pages/public/Explore";
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -46,7 +47,7 @@ function AppRoutes() {
         <Route
           path="/edit-portfolio"
           element={
-            <ProtectedRoute allowedRoles={["student", "verifier", "reviewer", "recruiter", "mentor", "admin"]}>
+            <ProtectedRoute allowedRoles={["student", "reviewer", "recruiter", "mentor", "admin"]}>
               <EditPortfolio />
             </ProtectedRoute>
           }
@@ -55,7 +56,7 @@ function AppRoutes() {
         <Route
           path="/workspace/:view"
           element={
-            <ProtectedRoute allowedRoles={["verifier", "reviewer", "recruiter", "mentor", "admin"]}>
+            <ProtectedRoute allowedRoles={["reviewer", "recruiter", "admin"]}>
               <WorkspaceDetail />
             </ProtectedRoute>
           }
@@ -95,6 +96,11 @@ function AppRoutes() {
               <MyBadges />
             </ProtectedRoute>
           }
+        />
+
+        <Route
+          path="/recruiter-requirements"
+          element={<ProtectedRoute allowedRoles={["recruiter"]}><RecruiterRequirements /></ProtectedRoute>}
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />

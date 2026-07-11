@@ -5,6 +5,7 @@ import projectRoutes from "./routes/projectRoutes.js";
 import portfolioRoutes from "./routes/portfolioRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import systemRoutes from "./routes/systemRoutes.js";
+import recruiterRequirementRoutes from "./routes/recruiterRequirementRoutes.js";
 import { emailServiceStatus } from "./config/smtp.js";
 
 const app = express();
@@ -96,6 +97,7 @@ app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/system", systemRoutes);
+app.use("/api/recruiter-requirements", recruiterRequirementRoutes);
 
 app.use((error, req, res, next) => {
   if (error?.type === "entity.too.large") {

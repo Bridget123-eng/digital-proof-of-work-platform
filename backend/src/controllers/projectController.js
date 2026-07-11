@@ -10,6 +10,8 @@ import { validateProjectPayload } from "../utils/validation.js";
 
 const allowedEvidenceTypes = new Set(["repository", "certificate", "live_demo", "case_study"]);
 const allowedVisibility = new Set(["private", "public"]);
+const allowedQueueStatuses = new Set(["pending", "in_review", "verified", "rejected", "changes_requested", "draft", "all"]);
+const reviewRoles = new Set(["reviewer"]);
 
 const normalizeText = (value, maxLength = 5000) =>
   String(value || "")
@@ -36,6 +38,13 @@ const normalizeCertificates = (certificates) =>
     }))
     .filter((certificate) => certificate.title || certificate.fileUrl)
     .slice(0, 10);
+
+const getReviewableStudentIds = async (reviewerId) =>
+  User.find({
+    role: "student",
+    status: "active",
+    $or: [{ assignedVerifier: reviewerId }, { assignedVerifier: null }],
+  }).distinct("_id");
 
 const toPublicProject = (project, verifiedProjectCounts = new Map()) => {
   const plainProject = typeof project.toObject === "function" ? project.toObject() : project;
@@ -267,13 +276,14 @@ export const getVerificationQueue = async (req, res) => {
     const { status = "pending", q = "" } = req.query;
     const query = {};
 
+    if (!allowedQueueStatuses.has(status)) {
+      return res.status(400).json({ message: "Invalid verification status" });
+    }
+
     if (status !== "all") query.verificationStatus = status;
     if (q) query.$text = { $search: q };
     if (!["admin", "recruiter"].includes(req.user.role)) {
-      const studentsForVerifier = await User.find({
-        role: "student",
-        assignedVerifier: req.user._id,
-      }).distinct("_id");
+      const studentsForVerifier = await getReviewableStudentIds(req.user._id);
       query.user = { $in: studentsForVerifier };
     }
 
@@ -326,9 +336,21 @@ export const reviewProject = async (req, res) => {
       });
     }
 
-    if (String(project.user) !== String(req.user._id) && !["verifier", "reviewer", "admin"].includes(req.user.role)) {
+    if (!reviewRoles.has(req.user.role)) {
       return res.status(403).json({
         message: "You do not have permission to review this submission",
+      });
+    }
+
+    const student = await User.findOne({
+      _id: project.user,
+      role: "student",
+      status: "active",
+    }).select("assignedVerifier");
+
+    if (!student || (student.assignedVerifier && String(student.assignedVerifier) !== String(req.user._id))) {
+      return res.status(403).json({
+        message: "This submission is not assigned to you for review",
       });
     }
 
@@ -352,7 +374,7 @@ export const reviewProject = async (req, res) => {
           user: project.user,
           project: project._id,
           name: "Verified Proof of Work",
-          description: "Awarded after a human verifier approved the submitted evidence.",
+          description: "Awarded after a human reviewer approved the submitted evidence.",
           level: project.analysis?.score >= 85 ? "gold" : "silver",
           awardedBy: req.user._id,
         },
@@ -415,6 +437,7 @@ export const reviewProject = async (req, res) => {
 export const getReviewerAnalytics = async (req, res) => {
   try {
     const reviewerFilter = req.user.role === "admin" ? {} : { reviewedBy: req.user._id };
+    const assignedStudentIds = req.user.role === "admin" ? null : await getReviewableStudentIds(req.user._id);
     const completedFilter = {
       ...reviewerFilter,
       reviewedAt: { $exists: true },
@@ -425,7 +448,7 @@ export const getReviewerAnalytics = async (req, res) => {
       Project.countDocuments(
         req.user.role === "admin"
           ? { verificationStatus: "pending" }
-          : { verificationStatus: "pending", assignedVerifier: req.user._id }
+          : { verificationStatus: "pending", user: { $in: assignedStudentIds } }
       ),
       Project.countDocuments({ ...completedFilter, verificationStatus: "verified" }),
       Project.find(completedFilter).select("createdAt reviewedAt verificationStatus").lean(),

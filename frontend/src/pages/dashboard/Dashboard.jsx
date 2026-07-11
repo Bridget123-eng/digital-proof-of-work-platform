@@ -10,11 +10,6 @@ const dashboardConfig = {
     description:
       "Manage your verified profile, submit evidence, and track how your proof-of-work is moving through review.",
   },
-  verifier: {
-    badge: "Verifier workspace",
-    heading: "Verify evidence and maintain trust.",
-    description: "Inspect submitted repositories, documents, and certificates to ensure platform integrity.",
-  },
   reviewer: {
     badge: "Reviewer workspace",
     heading: "Verify evidence and maintain trust.",
@@ -75,7 +70,7 @@ const emptyConfigForm = {
   notificationTemplates: "",
 };
 
-const normalizeRole = (role) => (role === "administrator" ? "admin" : role || "student");
+const normalizeRole = (role) => ({ administrator: "admin", verifier: "reviewer" }[role] || role || "student");
 const buildConfigForm = (configuration = {}) => ({
   badgeRules: (configuration.badgeRules || []).join("\n"),
   verificationCriteria: (configuration.verificationCriteria || []).join("\n"),
@@ -137,7 +132,7 @@ function Dashboard() {
         requests.push(["badges", API.get("/system/badges/me")]);
       }
 
-      if (role === "verifier" || role === "reviewer" || role === "mentor" || role === "admin") {
+      if (role === "reviewer" || role === "admin") {
         requests.push(["queue", API.get("/projects/queue?status=pending")]);
         requests.push(["audit", API.get("/system/audit")]);
         requests.push(["reviewAnalytics", API.get("/projects/reviewer-analytics")]);
@@ -233,21 +228,15 @@ function Dashboard() {
       { label: "Notifications", type: "route", route: "/notifications", detail: "See updates and deadlines." },
       { label: "Badges", type: "route", route: "/my-badges", detail: "Review trust signals earned." },
     ],
-    verifier: [
-      { label: "Verification queue", type: "route", route: "/workspace/queue", detail: "Review pending submissions." },
-      { label: "Review workspace", type: "route", route: "/workspace/review-workspace", detail: "Open evidence, compare proof, and inspect AI analysis." },
-      { label: "Reviewer analytics", type: "route", route: "/workspace/reviewer-analytics", detail: "Track completed reviews and turnaround." },
-      { label: "Audit logs", type: "route", route: "/workspace/audit", detail: "Inspect who reviewed what and when." },
-      { label: "My profile", type: "route", route: "/edit-portfolio", detail: "Update your verifier profile." },
-    ],
     reviewer: [
       { label: "Verification queue", type: "route", route: "/workspace/queue", detail: "Review pending submissions." },
-      { label: "Review workspace", type: "route", route: "/workspace/review-workspace", detail: "Open evidence, compare proof, and inspect AI analysis." },
+      { label: "Review workspace", type: "route", route: "/workspace/review-workspace", detail: "Open evidence, compare proof, and record a decision." },
       { label: "Reviewer analytics", type: "route", route: "/workspace/reviewer-analytics", detail: "Track completed reviews and turnaround." },
       { label: "Audit logs", type: "route", route: "/workspace/audit", detail: "Inspect who reviewed what and when." },
       { label: "My profile", type: "route", route: "/edit-portfolio", detail: "Update your reviewer profile." },
     ],
     recruiter: [
+      { label: "Post requirements", type: "route", route: "/recruiter-requirements", detail: "Publish skills needed and view matching students." },
       { label: "Explore work", type: "route", route: "/explore", detail: "Search verified public projects." },
       { label: "Reports snapshot", type: "route", route: "/workspace/analytics", detail: "Check verification analytics." },
       { label: "Public candidates", type: "route", route: "/workspace/public-projects", detail: "Review trusted portfolios." },
@@ -256,7 +245,6 @@ function Dashboard() {
     mentor: [
       { label: "Explore work", type: "route", route: "/explore", detail: "Browse student portfolios and work." },
       { label: "Guidance analytics", type: "route", route: "/workspace/analytics", detail: "Track student project quality." },
-      { label: "Review queue", type: "route", route: "/workspace/queue", detail: "Review assigned student work." },
       { label: "My profile", type: "route", route: "/edit-portfolio", detail: "Maintain your mentor profile." },
     ],
     admin: [
@@ -277,11 +265,6 @@ function Dashboard() {
       { value: dashboardData.projects.length, label: "Projects submitted" },
       { value: unreadNotifications, label: "Unread notifications" },
       { value: dashboardData.badges.length, label: "Badges earned" },
-    ],
-    verifier: [
-      { value: dashboardData.reviewAnalytics?.reviewsCompleted || 0, label: "Reviews completed" },
-      { value: dashboardData.reviewAnalytics?.pendingReviews || dashboardData.queue.length, label: "Pending reviews" },
-      { value: dashboardData.reviewAnalytics?.approvalPercentage || 0, label: "Approval %" },
     ],
     reviewer: [
       { value: dashboardData.reviewAnalytics?.reviewsCompleted || 0, label: "Reviews completed" },
@@ -308,7 +291,7 @@ function Dashboard() {
   const actions = roleActions[role] || roleActions.student;
   const quickStats = quickStatsByRole[role] || quickStatsByRole.student;
   const activeVerifiers = dashboardData.users.filter(
-    (entry) => ["verifier", "reviewer"].includes(normalizeRole(entry.role)) && (entry.status || "active") === "active"
+    (entry) => normalizeRole(entry.role) === "reviewer" && (entry.status || "active") === "active"
   );
 
   const refreshAdminSlices = async () => {
@@ -806,7 +789,7 @@ function Dashboard() {
                 </section>
               )}
 
-              {(role === "admin" || role === "reviewer" || role === "verifier" || role === "mentor") && (
+              {(role === "admin" || role === "reviewer") && (
                 <section id={role === "admin" ? "verification-management" : "queue"} className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -829,7 +812,7 @@ function Dashboard() {
                       </div>
                     )}
                   </div>
-                  {(role === "verifier" || role === "reviewer" || role === "mentor") && (
+                  {role === "reviewer" && (
                     <div id="reviewer-analytics" className="mt-4 grid gap-3 md:grid-cols-4">
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <p className="text-sm text-slate-400">Reviews completed</p>
@@ -982,9 +965,10 @@ function Dashboard() {
                           </div>
 
                           <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
-                            <p className="text-sm uppercase tracking-[0.18em] text-sky-300">Decision panel</p>
-                            <p className="mt-2 text-lg font-semibold text-white">Review and comment</p>
-                            <textarea
+                            {role === "reviewer" ? <>
+                              <p className="text-sm uppercase tracking-[0.18em] text-sky-300">Decision panel</p>
+                              <p className="mt-2 text-lg font-semibold text-white">Review and comment</p>
+                              <textarea
                               value={reviewNotes[project._id] || ""}
                               onChange={(event) =>
                                 setReviewNotes((current) => ({
@@ -996,7 +980,7 @@ function Dashboard() {
                               placeholder="Add comments for the student or note your review rationale."
                               className="mt-4 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white"
                             />
-                            <div className="mt-4 grid gap-3">
+                              <div className="mt-4 grid gap-3">
                               <button
                                 type="button"
                                 onClick={() => submitReview(project._id, "verified")}
@@ -1021,7 +1005,8 @@ function Dashboard() {
                               >
                                 Request changes
                               </button>
-                            </div>
+                              </div>
+                            </> : <p className="text-sm text-slate-300">Administrators can monitor the queue, but only reviewers can record verification decisions.</p>}
                           </div>
                         </div>
                       </article>
@@ -1140,7 +1125,6 @@ function Dashboard() {
                           className="rounded-xl border border-slate-600 bg-slate-950 px-4 py-3 text-white"
                         >
                           <option value="student">student</option>
-                          <option value="verifier">verifier</option>
                           <option value="recruiter">recruiter</option>
                           <option value="admin">admin</option>
                         </select>
@@ -1187,7 +1171,6 @@ function Dashboard() {
                                   className="rounded-xl border border-slate-600 bg-slate-950 px-3 py-2 text-white"
                                 >
                                   <option value="student">student</option>
-                                  <option value="verifier">verifier</option>
                                   <option value="recruiter">recruiter</option>
                                   <option value="admin">admin</option>
                                 </select>
@@ -1213,7 +1196,7 @@ function Dashboard() {
                               </label>
                               {normalizeRole(entry.role) === "student" ? (
                                 <label className="grid gap-1 text-sm text-slate-300">
-                                  <span>Verifier</span>
+                                  <span>Reviewer</span>
                                   <select
                                     value={rowEdits[entry._id]?.assignedVerifier || ""}
                                     onChange={(event) =>

@@ -6,14 +6,32 @@ import axios from "axios";
  * @returns {{owner: string, repo: string} | null}
  */
 export const parseGithubUrl = (url) => {
-  if (!url) return null;
-  const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
-  if (!match) return null;
-  return {
-    owner: match[1],
-    repo: match[2].replace(/\.git$/, ""),
-  };
+  try {
+    const parsedUrl = new URL(String(url || "").trim());
+    const hostname = parsedUrl.hostname.toLowerCase();
+    const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
+
+    if (!["github.com", "www.github.com"].includes(hostname) || pathParts.length < 2) {
+      return null;
+    }
+
+    const [owner, rawRepo] = pathParts;
+    const repo = rawRepo.replace(/\.git$/, "");
+    if (!/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(repo)) {
+      return null;
+    }
+
+    return { owner, repo };
+  } catch {
+    return null;
+  }
 };
+
+const githubRequest = (url, token = null) =>
+  axios.get(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    timeout: 8000,
+  });
 
 /**
  * Fetch repository metadata from GitHub API
@@ -23,8 +41,7 @@ export const parseGithubUrl = (url) => {
  * @returns {Promise<Object>}
  */
 export const fetchRepoMetadata = async (owner, repo, token = null) => {
-  const headers = token ? { Authorization: `token ${token}` } : {};
-  const { data } = await axios.get(`https://api.github.com/repos/${owner}/${repo}`, { headers });
+  const { data } = await githubRequest(`https://api.github.com/repos/${owner}/${repo}`, token);
   return {
     name: data.name,
     description: data.description,
@@ -46,8 +63,7 @@ export const fetchRepoMetadata = async (owner, repo, token = null) => {
  * @returns {Promise<Object>}
  */
 export const fetchRepoLanguages = async (languagesUrl, token = null) => {
-  const headers = token ? { Authorization: `token ${token}` } : {};
-  const { data } = await axios.get(languagesUrl, { headers });
+  const { data } = await githubRequest(languagesUrl, token);
   return data;
 };
 
@@ -59,8 +75,7 @@ export const fetchRepoLanguages = async (languagesUrl, token = null) => {
  * @returns {Promise<Array>}
  */
 export const fetchRepoActivity = async (owner, repo, token = null) => {
-  const headers = token ? { Authorization: `token ${token}` } : {};
-  const { data } = await axios.get(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=10`, { headers });
+  const { data } = await githubRequest(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=10`, token);
   return data.map((commit) => ({
     sha: commit.sha,
     author: commit.commit.author.name,
@@ -80,9 +95,10 @@ export const analyzeGithubRepo = async (url) => {
 
   try {
     const { owner, repo } = parsed;
-    const metadata = await fetchRepoMetadata(owner, repo);
-    const languages = await fetchRepoLanguages(metadata.languages_url);
-    const activity = await fetchRepoActivity(owner, repo);
+    const token = process.env.GITHUB_TOKEN || null;
+    const metadata = await fetchRepoMetadata(owner, repo, token);
+    const languages = await fetchRepoLanguages(metadata.languages_url, token);
+    const activity = await fetchRepoActivity(owner, repo, token);
 
     return {
       metadata,
