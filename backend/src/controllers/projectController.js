@@ -483,8 +483,7 @@ export const getReviewerAnalytics = async (req, res) => {
       ...reviewerFilter,
       reviewedAt: { $exists: true },
     };
-
-    const [reviewsCompleted, pendingReviews, approvedReviews, reviewedProjects] = await Promise.all([
+        const [reviewsCompleted, pendingReviews, approvedReviews, reviewedProjects] = await Promise.all([
       Project.countDocuments(completedFilter),
       Project.countDocuments(
         req.user.role === "admin"
