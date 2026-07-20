@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import API from "../../api/axios";
 
 const emptyForm = { title: "", description: "", skills: "" };
 
 function RecruiterRequirements() {
+  const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
   const [requirements, setRequirements] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -69,7 +70,18 @@ function RecruiterRequirements() {
           <input required value={form.skills} onChange={(event) => setForm({ ...form, skills: event.target.value })} placeholder="Required skills, e.g. React, Node.js, MongoDB" className="rounded border border-slate-300 p-3" />
           <button disabled={busy} className="rounded bg-slate-950 px-4 py-3 font-semibold text-white disabled:opacity-60">Publish requirement</button>
         </form>
-        <Link to="/dashboard" className="mt-5 block text-sm font-semibold text-sky-700">Back to dashboard</Link>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="rounded border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+          >
+            Back
+          </button>
+          <Link to="/dashboard" className="rounded border border-sky-300 px-4 py-3 text-center text-sm font-semibold text-sky-700">
+            Dashboard
+          </Link>
+        </div>
       </section>
       <section className="grid gap-4">
         <h2 className="text-xl font-bold">Your requirements</h2>

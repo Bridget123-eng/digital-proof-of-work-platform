@@ -137,7 +137,7 @@ function Dashboard() {
         requests.push(["badges", API.get("/system/badges/me")]);
       }
 
-      if (role === "verifier" || role === "reviewer" || role === "mentor" || role === "admin") {
+      if (role === "reviewer" || role === "admin") {
         requests.push(["queue", API.get("/projects/queue?status=pending")]);
         requests.push(["audit", API.get("/system/audit")]);
         requests.push(["reviewAnalytics", API.get("/projects/reviewer-analytics")]);

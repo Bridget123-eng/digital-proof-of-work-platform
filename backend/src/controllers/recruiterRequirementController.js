@@ -8,6 +8,7 @@ const normalizeText = (value, maxLength) => String(value || "").trim().slice(0, 
 const normalizeSkills = (value) => [...new Set((Array.isArray(value) ? value : String(value || "").split(","))
   .map((skill) => normalizeText(skill, 80))
   .filter(Boolean))].slice(0, 20);
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export const createRequirement = async (req, res) => {
   try {
@@ -41,7 +42,7 @@ export const getRequirementMatches = async (req, res) => {
     const requirement = await RecruiterRequirement.findOne({ _id: req.params.id, recruiter: req.user._id });
     if (!requirement) return res.status(404).json({ message: "Requirement not found" });
 
-    const skillMatchers = requirement.skills.map((skill) => new RegExp(`^${skill.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, "i"));
+    const skillMatchers = requirement.skills.map((skill) => new RegExp(`^${escapeRegex(skill)}$`, "i"));
     const [portfolios, projects] = await Promise.all([
       Portfolio.find({ skills: { $in: skillMatchers } }).populate("studentId", "name profileImage").lean(),
       Project.find({ visibility: "public", verificationStatus: "verified", skills: { $in: skillMatchers } }).select("user skills").lean(),
@@ -51,7 +52,10 @@ export const getRequirementMatches = async (req, res) => {
       const key = String(project.user);
       projectSkillsByUser.set(key, [...new Set([...(projectSkillsByUser.get(key) || []), ...(project.skills || [])])]);
     });
-    const candidateIds = new Set([...portfolios.map((portfolio) => String(portfolio.studentId?._id)), ...projectSkillsByUser.keys()]);
+    const candidateIds = new Set([
+      ...portfolios.map((portfolio) => String(portfolio.studentId?._id || "")).filter(Boolean),
+      ...projectSkillsByUser.keys(),
+    ]);
     const users = await User.find({ _id: { $in: [...candidateIds] }, role: "student", status: "active" }).select("name profileImage").lean();
     const portfolioByUser = new Map(portfolios.map((portfolio) => [String(portfolio.studentId?._id), portfolio]));
     const matches = users.map((user) => {

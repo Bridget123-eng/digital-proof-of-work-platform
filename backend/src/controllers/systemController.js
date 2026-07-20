@@ -74,7 +74,7 @@ const getOrCreateSystemConfig = async () =>
   SystemConfig.findOneAndUpdate(
     { key: "platform" },
     { $setOnInsert: { key: "platform", ...normalizeConfigPayload(defaultSystemConfig) } },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 
 export const getNotifications = async (req, res) => {
@@ -94,7 +94,7 @@ export const markNotificationRead = async (req, res) => {
     const notification = await Notification.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id },
       { read: true },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!notification) {
@@ -226,7 +226,7 @@ export const updateUserRole = async (req, res) => {
         return res.status(400).json({ message: "Invalid role selected" });
       }
 
-      updates.role = role === "administrator" ? "admin" : role;
+      updates.role = normalizeRole(role);
     }
 
     if (status) {
@@ -264,7 +264,7 @@ export const updateUserRole = async (req, res) => {
     }
 
     const user = await User.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
+      returnDocument: "after",
     }).select("-password");
 
     if (!user) {
@@ -430,7 +430,7 @@ export const updateSystemConfig = async (req, res) => {
     const config = await SystemConfig.findOneAndUpdate(
       { key: "platform" },
       normalizedConfig,
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
     );
 
     await createAuditEvent({
@@ -632,7 +632,7 @@ export const seedDemoData = async (req, res) => {
       users[demoUser.role] = await User.findOneAndUpdate(
         { email: demoUser.email },
         { ...demoUser, password },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
       );
     }
 
@@ -663,7 +663,7 @@ export const seedDemoData = async (req, res) => {
         reviewNote: "Repository, live demo, and description are consistent.",
         analysis,
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     await Portfolio.findOneAndUpdate(
@@ -675,7 +675,7 @@ export const seedDemoData = async (req, res) => {
         githubLink: "https://github.com/demo-student",
         projects: [project._id],
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     await Badge.findOneAndUpdate(
@@ -688,7 +688,7 @@ export const seedDemoData = async (req, res) => {
         level: "gold",
         awardedBy: users.reviewer._id,
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     await Notification.create({

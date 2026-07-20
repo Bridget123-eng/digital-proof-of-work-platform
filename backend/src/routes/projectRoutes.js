@@ -21,7 +21,7 @@ router.get("/my-projects", protect, getUserProjects);
 router.get(
   "/queue",
   protect,
-  authorize("reviewer", "admin"),
+  authorize("reviewer", "mentor", "admin"),
   getVerificationQueue
 );
 

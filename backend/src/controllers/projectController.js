@@ -61,13 +61,7 @@ const toPublicProject = (project, verifiedProjectCounts = new Map()) => {
     certificates: plainProject.certificates || [],
     githubData: plainProject.githubData || null,
     analysis: plainProject.analysis || null,
-    proofFiles: plainProject.proofFiles || [],
-    certificates: plainProject.certificates || [],
-    githubData: plainProject.githubData || null,
-    analysis: plainProject.analysis || null,
     evidenceType: plainProject.evidenceType,
-    certificates: plainProject.certificates || [],
-    certificates: plainProject.certificates || [],
     verificationStatus: "verified",
     createdAt: plainProject.createdAt,
     updatedAt: plainProject.updatedAt,
@@ -189,7 +183,7 @@ export const createProject = async (req, res) => {
           certificates: { $each: certificateList },
         },
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     await createAuditEvent({
@@ -383,7 +377,7 @@ export const reviewProject = async (req, res) => {
           level: project.analysis?.score >= 85 ? "gold" : "silver",
           awardedBy: req.user._id,
         },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: "after" }
       );
     }
 
@@ -391,43 +385,7 @@ export const reviewProject = async (req, res) => {
       const portfolio = await Portfolio.findOneAndUpdate(
         { studentId: project.user },
         { $setOnInsert: { studentId: project.user } },
-        { upsert: true, new: true }
-      );
-
-      project.certificates.forEach((projectCertificate) => {
-        const projectFileUrl = normalizeText(projectCertificate.fileUrl, 500).toLowerCase();
-        const projectTitle = normalizeText(projectCertificate.title, 120).toLowerCase();
-        const existingCertificate = portfolio.certificates.find((certificate) => {
-          const fileUrl = normalizeText(certificate.fileUrl, 500).toLowerCase();
-          const title = normalizeText(certificate.title, 120).toLowerCase();
-          return (projectFileUrl && fileUrl === projectFileUrl) || (projectTitle && title === projectTitle);
-        });
-
-        if (existingCertificate) {
-          existingCertificate.verificationStatus = status;
-          existingCertificate.reviewNote = normalizedNote;
-          existingCertificate.reviewedAt = new Date();
-        } else {
-          portfolio.certificates.push({
-            title: projectCertificate.title,
-            fileUrl: projectCertificate.fileUrl,
-            issuedBy: projectCertificate.issuedBy,
-            issuedDate: projectCertificate.issuedDate,
-            verificationStatus: status,
-            reviewNote: normalizedNote,
-            reviewedAt: new Date(),
-          });
-        }
-      });
-
-      await portfolio.save();
-    }
-
-    if (project.certificates?.length) {
-      const portfolio = await Portfolio.findOneAndUpdate(
-        { studentId: project.user },
-        { $setOnInsert: { studentId: project.user } },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: "after" }
       );
 
       project.certificates.forEach((projectCertificate) => {
@@ -483,19 +441,18 @@ export const getReviewerAnalytics = async (req, res) => {
       ...reviewerFilter,
       reviewedAt: { $exists: true },
     };
-        const [reviewsCompleted, pendingReviews, approvedReviews, reviewedProjects] = await Promise.all([
+    const [reviewsCompleted, pendingReviews, approvedReviews, reviewedProjects] = await Promise.all([
       Project.countDocuments(completedFilter),
-      Project.countDocuments(
-        req.user.role === "admin"
-          ? { verificationStatus: "pending" }
-          : { verificationStatus: "pending", assignedVerifier: req.user._id }
-      ),
       Project.countDocuments(
         req.user.role === "admin"
           ? { verificationStatus: "pending" }
           : { verificationStatus: "pending", user: { $in: assignedStudentIds } }
       ),
-      Project.countDocuments({ ...completedFilter, verificationStatus: "verified" }),
+      Project.countDocuments(
+        req.user.role === "admin"
+          ? { ...completedFilter, verificationStatus: "verified" }
+          : { ...completedFilter, verificationStatus: "verified" }
+      ),
       Project.find(completedFilter).select("createdAt reviewedAt verificationStatus").lean(),
     ]);
 

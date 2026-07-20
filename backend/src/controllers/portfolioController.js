@@ -204,7 +204,7 @@ export const getMyPortfolio = async (req, res) => {
     const portfolio = await Portfolio.findOneAndUpdate(
       { studentId: req.user._id },
       { $setOnInsert: { studentId: req.user._id } },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     )
       .populate("studentId", "name email profileImage")
       .populate("projects");
@@ -232,7 +232,7 @@ export const updatePortfolio = async (req, res) => {
     const portfolio = await Portfolio.findOneAndUpdate(
       { studentId: req.user._id },
       { $setOnInsert: { studentId: req.user._id } },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     const nextBio = req.body.bio !== undefined ? normalizeText(req.body.bio, 2000) : portfolio.bio;
